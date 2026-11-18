@@ -36,13 +36,36 @@
         <p class="brand-team">토큰에 쌀밥 한 스쿱</p>
       </header>
 
-      <!-- 3번 커밋에서 단계 데이터와 방향키 전환이 들어온다. 지금은 1단계만 고정으로 둔다 -->
-      <article class="guide" aria-live="polite">
-        <p class="guide-step"><span class="guide-step-now">1</span> / 6</p>
-        <h2 class="guide-title">내 말로 설명하기</h2>
-        <p class="guide-desc">오늘 공부한 내용을 오리에게 내 말로 설명해요.</p>
+      <!-- 안내 패널. 문구는 scripts/steps.js에 있고 scripts/guide.js가 채운다 -->
+      <article class="guide" data-elapsed="off">
+        <div class="guide-top">
+          <p class="guide-step"><span class="guide-step-now"></span> / <span class="guide-step-total"></span></p>
+          <ol class="guide-progress" aria-hidden="true"></ol>
+        </div>
+        <div class="guide-body">
+          <div class="guide-text">
+            <div aria-live="polite">
+              <h2 class="guide-title"></h2>
+              <p class="guide-desc"></p>
+            </div>
+            <!-- 2단계에서만 보인다. 다른 단계에서도 자리는 남겨 패널 높이가 바뀌지 않게 한다 -->
+            <p class="guide-elapsed">실제 AI가 답하는 중 · <span class="guide-elapsed-time">0:00</span></p>
+          </div>
+          <div class="guide-duck">
+            <img class="guide-duck-sheet" alt="" width="1536" height="256">
+          </div>
+        </div>
       </article>
     </section>
   </main>
+
+  <!-- 발표자용 키 안내. H로 켜고 끈다. 기본은 꺼짐 -->
+  <aside class="keys-help" hidden>
+    <span><kbd>←</kbd><kbd>→</kbd> 단계</span>
+    <span><kbd>1</kbd>~<kbd>6</kbd> 바로 가기</span>
+    <span><kbd>Home</kbd> 처음으로</span>
+    <span><kbd>C</kbd> 폰 화면 연결</span>
+    <span><kbd>H</kbd> 안내 끄기</span>
+  </aside>
 </body>
 </html>

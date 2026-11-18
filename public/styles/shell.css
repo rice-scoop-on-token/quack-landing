@@ -69,11 +69,14 @@ body {
   font-family: var(--family-body);
   font-size: calc(24 * var(--u));
   -webkit-font-smoothing: antialiased;
+  /* 한국어는 어절 단위로 줄바꿈한다("끊겼어 / 요" 같은 음절 끊김 방지) */
+  word-break: keep-all;
 }
 
 h1,
 h2,
-p {
+p,
+ol {
   margin: 0;
 }
 
@@ -153,7 +156,6 @@ p {
   gap: calc(12 * var(--u));
   padding: calc(24 * var(--u));
   text-align: center;
-  word-break: keep-all;
 }
 
 /* image-rendering은 기본값으로 둔다. 원본이 가장자리가 부드럽게 섞인 그림이라
@@ -241,16 +243,23 @@ p {
   font-weight: 700;
 }
 
+/* ---------- 안내 패널 ---------- */
+
 .guide {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: calc(20 * var(--u));
-  padding: calc(40 * var(--u)) calc(48 * var(--u)) calc(44 * var(--u));
+  padding: calc(36 * var(--u)) calc(48 * var(--u)) calc(36 * var(--u));
   border: var(--paper-border) solid var(--color-outline);
   border-radius: var(--paper-radius);
   background: var(--color-card);
   box-shadow: 0 var(--paper-shadow) 0 var(--color-outline);
+}
+
+.guide-top {
+  display: flex;
+  align-items: center;
+  gap: calc(20 * var(--u));
 }
 
 .guide-step {
@@ -260,6 +269,41 @@ p {
   background: var(--color-primary);
   font-weight: 700;
   line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* 진행 표시 6칸. 지나온 단계와 지금 단계는 주요색으로 채운다 */
+.guide-progress {
+  display: flex;
+  gap: calc(8 * var(--u));
+  padding: 0;
+  list-style: none;
+}
+
+.guide-progress li {
+  width: calc(28 * var(--u));
+  height: calc(16 * var(--u));
+  border: var(--paper-border) solid var(--color-outline);
+  border-radius: calc(5 * var(--u));
+  background: var(--color-disabled-bg);
+}
+
+.guide-progress li.is-done {
+  background: var(--color-primary);
+}
+
+.guide-body {
+  display: flex;
+  align-items: center;
+  gap: calc(32 * var(--u));
+}
+
+.guide-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(16 * var(--u));
 }
 
 .guide-title {
@@ -268,11 +312,96 @@ p {
   font-size: 48px;
   font-size: round(nearest, calc(48 * var(--u)), 12px);
   line-height: 1.25;
-  word-break: keep-all;
+  margin-bottom: calc(12 * var(--u));
 }
 
+/* 설명은 단계마다 1~2줄이다. 2줄 자리를 늘 잡아 단계를 넘길 때 패널 높이가 바뀌지 않게 한다 */
 .guide-desc {
   font-size: calc(28 * var(--u));
   line-height: 1.5;
-  word-break: keep-all;
+  min-height: 3em;
+}
+
+/* 2단계 경과 시간. 다른 단계에서는 자리만 남기고 숨긴다 */
+.guide-elapsed {
+  align-self: flex-start;
+  padding: calc(4 * var(--u)) calc(14 * var(--u));
+  border-radius: calc(var(--radius-small) * var(--paper-scale) * var(--u));
+  background: var(--color-notice-bg);
+  color: var(--color-text-accent);
+  font-size: calc(22 * var(--u));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.guide[data-elapsed='off'] .guide-elapsed {
+  visibility: hidden;
+}
+
+/* 오리 동작 시트(256px 칸 6개)를 칸 크기 창 안에서 한 칸씩 옮긴다. 앱과 같이 칸당 250ms.
+ * image-rendering은 기본값으로 둔다. 표시 크기(128~192px)에서 pixelated는 외곽선 굵기가
+ * 칸마다 들쭉날쭉하고 기본값이 고르다(스크린샷 비교). */
+.guide-duck {
+  flex: none;
+  width: calc(128 * var(--u));
+  height: calc(128 * var(--u));
+  overflow: hidden;
+}
+
+.guide-duck-sheet {
+  display: block;
+  width: 600%;
+  height: 100%;
+  animation: duck-sheet 1.5s steps(6) infinite;
+}
+
+@keyframes duck-sheet {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+/* 단계가 바뀔 때 짧게 떠오르며 나타난다(200ms) */
+.guide-body.is-entering {
+  animation: step-enter 200ms ease-out;
+}
+
+@keyframes step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(calc(10 * var(--u)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-duck-sheet,
+  .guide-body.is-entering {
+    animation: none;
+  }
+}
+
+/* ---------- 발표자용 키 안내 (H) ---------- */
+
+.keys-help {
+  position: fixed;
+  right: calc(16 * var(--u));
+  bottom: calc(10 * var(--u));
+  display: flex;
+  gap: calc(16 * var(--u));
+  color: var(--color-muted-strong);
+  font-size: calc(14 * var(--u));
+}
+
+.keys-help[hidden] {
+  display: none;
+}
+
+.keys-help kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  margin-right: 0.2em;
+  padding: 0 0.3em;
+  border: 1px solid var(--color-muted-strong);
+  border-radius: 4px;
+  font-family: inherit;
+  text-align: center;
 }

@@ -9,6 +9,12 @@ quack 레포(`rice-scoop-on-token/quack`) 커밋 `1e50969e7b6fb8afff669f599273bb
 | 이 레포 경로 | quack 원본 경로 | 쓰는 곳 |
 | --- | --- | --- |
 | `animal/duck/baby/base.png` | `frontend/assets/animal/duck/baby/base.png` | 폰 프레임 대기 화면의 오리 |
+| `animal/duck/baby/actions/idle.png` | `frontend/assets/animal/duck/baby/actions/idle.png` | 안내 패널 1·4단계 오리 동작 |
+| `animal/duck/baby/actions/think.png` | `frontend/assets/animal/duck/baby/actions/think.png` | 안내 패널 2단계 오리 동작 |
+| `animal/duck/baby/actions/dejected.png` | `frontend/assets/animal/duck/baby/actions/dejected.png` | 안내 패널 3단계 오리 동작 |
+| `animal/duck/baby/actions/happy_jump.png` | `frontend/assets/animal/duck/baby/actions/happy_jump.png` | 안내 패널 5·6단계 오리 동작 |
+
+동작 시트는 1536×256(256px 칸 6개)이고, 단계별 동작은 quack `frontend/src/features/character/screenActions.ts`를 따릅니다(`public/scripts/steps.js` 주석 참고).
 
 ## 글꼴
 

@@ -13,10 +13,10 @@ Quack(꽥) 앱을 충남대 창의축전 부스(11/20 금)에서 시연하기 �
 
 1. 레포 뼈대, 로컬 서버, 가로 화면 셸(폰 프레임 자리, 안내 패널, quack 디자인 토큰) — 완료
 2. 브라우저 화면 공유(getDisplayMedia)로 scrcpy 창을 잡아 폰 프레임 안에 실시간 표시 — 완료
-3. 안내 패널 단계 데이터와 방향키 전환, AI 답변 대기(8~15초) 중 설명 문구
+3. 안내 패널 단계 데이터와 방향키 전환, AI 답변 대기(8~15초) 중 설명 문구 — 완료
 4. 대비책: 미러링 실패 시 quack 웹 빌드(실제 AI 모드) 전환, 인터넷 실패 시 사전 녹화 영상 재생
 
-안내 패널 단계: 1) 내 말로 설명하기 2) AI가 설명을 살펴보는 중 3) 꼬리질문 4) 다시 설명하기 5) 이해 확인 6) 성장 보상
+안내 패널 단계: 1) 내 말로 설명하기 2) AI가 살펴보는 중 3) 꼬리질문 4) 다시 설명하기 5) 이해 확인 6) 성장 보상 (문구는 `public/scripts/steps.js`)
 
 ## 구조
 
@@ -25,9 +25,12 @@ Quack(꽥) 앱을 충남대 창의축전 부스(11/20 금)에서 시연하기 �
 - `public/styles/tokens.css`: quack `frontend/src/theme/assetTokens.ts`를 옮긴 값. 상단에 quack 커밋 해시가 있다.
 - `public/styles/shell.css`: 배치와 paper UI. `--u`가 화면 배율(1280×720에서 1px), `--phone-aspect`가 폰 화면 비율, `--phone-max-aspect`가 폰 프레임 폭 상한(높이 대비)이다.
 - `public/scripts/phone-view.js`: `attachStream(stream)`이 아무 MediaStream이나 폰 프레임 `<video>`에 붙이고, 영상 비율로 `--phone-aspect`를 갱신하고, 트랙이 끝나면 대기 화면(끊김 문구)으로 돌린다. 연결 중에는 Screen Wake Lock을 건다. 폰 상태는 `.phone[data-state]`(waiting / connected / disconnected)로 표시한다.
-- `public/scripts/main.js`: `C` 키·대기 화면 클릭 → getDisplayMedia → `attachStream`. 새 창을 고른 뒤에만 기존 스트림을 정리한다(취소하면 기존 화면 유지).
+- `public/scripts/main.js`: 발표자 키를 한곳에서 연결한다(`←`/`→`, `1`~`6`, `Home`, `H`, `C`). `event.code` 기준이라 한글 입력 상태에서도 동작한다. Ctrl·Alt·Meta 조합은 모두 무시하고(브라우저 단축키에 맡김), 맡은 키는 `preventDefault()`하며, 길게 눌러 생기는 반복 입력은 무시한다. `C`는 getDisplayMedia → `attachStream`이고, 새 창을 고른 뒤에만 기존 스트림을 정리한다(취소하면 기존 화면 유지).
+- `public/scripts/steps.js`: 안내 패널 단계 데이터(제목, 설명, 오리 동작, 경과 시간 표시 여부). 오리 동작은 quack `screenActions.ts` 매핑을 따른다.
+- `public/scripts/guide.js`: 패널 그리기. `showStep(n)`/`nextStep()`/`prevStep()`, 진행 6칸, 200ms 전환, 2단계 경과 시간(남은 시간·진행률은 보여 주지 않는다). 패널 높이는 설명 2줄 + 경과 시간 줄 자리를 늘 잡아 단계를 넘겨도 바뀌지 않는다.
+- 오리 동작 시트(256px 칸 6개)는 CSS `steps(6)`로 칸당 250ms(앱 `CharacterBox`와 같음) 재생한다. "동작 줄이기"면 시트·단계 전환·대기 화면 오리 모두 멈춘다.
 - `public/assets/SOURCES.md`: 복사한 에셋과 글꼴의 출처·버전.
-- `scripts/check.mjs`(`npm run check`): 헤드리스 Chrome + DevTools 프로토콜 자동 확인. 서버가 꺼져 있으면 직접 띄운다. 테스트 영상(캔버스 `captureStream()`)은 이 스크립트가 페이지 안에서 `import('/scripts/phone-view.js')`로 넣고, 시연 화면 코드에는 테스트 경로를 두지 않는다. 결과는 OS 임시 폴더에만 쓴다.
+- `scripts/check.mjs`(`npm run check`): 헤드리스 Chrome + DevTools 프로토콜 자동 확인. 서버가 꺼져 있으면 직접 띄운다. 테스트 영상(캔버스 `captureStream()`)은 이 스크립트가 페이지 안에서 `import('/scripts/phone-view.js')`로 넣고, 시연 화면 코드에는 테스트 경로를 두지 않는다. 결과는 OS 임시 폴더에만 쓴다. 주의: CDP 실제 키 입력(`Input.dispatchKeyEvent`)은 브라우저 단축키도 실행하므로(Ctrl+H 방문 기록, Ctrl+Shift+C 개발자 도구 → 시연 탭이 가려져 타이머가 늦어지고 외부 요청이 생김), 수정 키 조합은 페이지 안 합성 `KeyboardEvent`로 확인한다.
 
 ## 디자인 기준
 
@@ -35,7 +38,8 @@ Quack(꽥) 앱을 충남대 창의축전 부스(11/20 금)에서 시연하기 �
 - paper UI 문법: 크림 바탕, 갈색 외곽선, 번지지 않는 하드 그림자(blur 0), 둥근 모서리. 큰 화면이라 비례해서 키우되 문법은 유지한다.
 - 폰 프레임은 실사 기기 목업이 아니라 두꺼운 갈색 테두리의 둥근 프레임이다. 미러링된 앱 글자가 작으므로 프레임은 화면 높이를 최대한 차지하고 테두리는 얇게 유지한다.
 - 글꼴: 제목은 Galmuri11(픽셀), 본문은 Pretendard. Galmuri 크기는 12px 배수로 맞춘다(CSS `round()`).
-- 가독성: CSS 기준 1280×720에서 단계 제목 44px 이상, 설명 24px 이상. 1280×720~1920×1080에서 스크롤 없이 한 화면에 들어와야 한다.
+- 가독성: CSS 기준 1280×720에서 단계 제목 44px 이상, 설명 24px 이상. 가장 긴 제목도 한 줄. 1280×720~1920×1080에서 스크롤 없이 한 화면에 들어와야 한다.
+- 한국어는 어절 단위로 줄바꿈한다(`body`에 `word-break: keep-all`).
 - quack 캐릭터 PNG는 엄격한 픽셀 격자가 아니라 가장자리가 부드러운 그림이다. 정수배 조건은 두지 않고, 실제 표시 크기에서 `pixelated`와 기본값을 비교해 더 깨끗한 쪽을 쓴다(현재 오리는 기본값).
 - 관람객이 읽는 문구는 앱과 같은 해요체로 짧게 쓴다.
 - 앱 아이콘과 스플래시(Expo 기본 이미지)는 쓰지 않는다.
