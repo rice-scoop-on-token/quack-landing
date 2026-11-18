@@ -3,11 +3,15 @@
 // 확인하는 것:
 //   - 안내 패널 6단계 × 3해상도 × (대기 / 테스트 영상 연결): 스크롤·잘림, 제목 한 줄, 글자 크기, 패널 높이 고정
 //   - 테스트 영상(캔버스 captureStream)을 붙였을 때 비율 갱신·화면 맞춤, C 키 연결·취소·교체, 끊김 처리
-//   - 키 조작(←, →, 1~6, Home, H, C), 수정 키 무시, 반복 입력 무시, 기본 동작 막기
+//   - 키 조작(←, →, 1~6, Home, H, C, R, P, ",", ".", L), 수정 키 무시, 반복 입력 무시, 기본 동작 막기
 //   - 2단계 경과 시간, 동작 줄이기, 외부 요청 0건, 모듈 스크립트 MIME
-// 스크린샷과 결과(report.json)는 OS 임시 폴더에만 저장한다. 레포 안에는 아무것도 쓰지 않는다.
+//   - 서버 Range 요청(206, 416, 200)
+//   - 녹화 모드: 재생·일시정지·탐색·끝에서 멈춤, 비율, "녹화 영상" 표시, 경과 시간 숨김, 라이브 전환, 파일 없음 안내
+// 스크린샷과 결과(report.json)는 OS 임시 폴더에만 저장한다.
+// 예외: 녹화 모드 확인 동안만 테스트 영상을 public/recordings/demo.mp4에 두고 끝나면 지운다(아래 "녹화 영상 보호").
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { request } from 'node:http';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,6 +58,31 @@ if (!(await isServerUp())) {
   const serve = fileURLToPath(new URL('./serve.mjs', import.meta.url));
   server = spawn(process.execPath, [serve], { stdio: 'ignore' });
   for (let i = 0; i < 50 && !(await isServerUp()); i++) await sleep(100);
+}
+
+// ---------- 녹화 영상 보호 ----------
+// 테스트 영상은 실제 녹화와 같은 경로(public/recordings/demo.mp4)에 둬야 한다.
+// 그래서 테스트 영상을 둘 때 표시 파일을 함께 만들고, 표시가 있을 때만 demo.mp4를 지운다.
+// 표시 없이 demo.mp4가 있으면 리허설 때 녹화한 실제 파일이므로 건드리지 않고 녹화 확인을 건너뛴다.
+const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url));
+const RECORDINGS_DIR = join(PUBLIC_DIR, 'recordings');
+const DEMO_PATH = join(RECORDINGS_DIR, 'demo.mp4');
+const TEST_MARK = join(RECORDINGS_DIR, '.check-test-video');
+
+function removeTestVideo() {
+  if (!existsSync(TEST_MARK)) return;
+  rmSync(DEMO_PATH, { force: true });
+  rmSync(TEST_MARK, { force: true });
+}
+
+// 지난번 확인이 중간에 멈춰 테스트 영상이 남았으면 먼저 정리한다(부스에서 R을 눌러 테스트 영상이 나오지 않게)
+if (existsSync(TEST_MARK)) {
+  console.log('지난 확인에서 남은 테스트 영상을 지웠어요.');
+  removeTestVideo();
+}
+const realRecording = existsSync(DEMO_PATH);
+if (realRecording) {
+  console.log('주의: public/recordings/demo.mp4(실제 녹화)가 있어서 녹화 영상 확인 일부를 건너뛰어요. 파일은 건드리지 않아요.');
 }
 
 // ---------- Chrome ----------
@@ -149,6 +178,11 @@ async function shot(name) {
 const KEYS = {
   KeyC: { key: 'c', keyCode: 67 },
   KeyH: { key: 'h', keyCode: 72 },
+  KeyR: { key: 'r', keyCode: 82 },
+  KeyP: { key: 'p', keyCode: 80 },
+  KeyL: { key: 'l', keyCode: 76 },
+  Comma: { key: ',', keyCode: 188 },
+  Period: { key: '.', keyCode: 190 },
   ArrowRight: { key: 'ArrowRight', keyCode: 39 },
   ArrowLeft: { key: 'ArrowLeft', keyCode: 37 },
   Home: { key: 'Home', keyCode: 36 },
@@ -232,11 +266,20 @@ globalThis.__check = {
       if (right <= left || bottom <= top) continue;
       if (left < -0.5 || top < -0.5 || right > innerWidth + 0.5 || bottom > innerHeight + 0.5) out.push(el.className);
     }
+    const rec = document.querySelector('.phone-recording');
     return {
+      mode: phone.dataset.mode,
+      bodyMode: document.body.dataset.phoneMode,
       state: phone.dataset.state,
       aspectVar: __check.aspect(),
       screen: { w: screen.width, h: screen.height },
       video: { w: video.videoWidth, h: video.videoHeight, shown: video.offsetParent !== null, hasSrc: !!video.srcObject },
+      rec: { shown: rec.checkVisibility(), w: rec.videoWidth, h: rec.videoHeight, paused: rec.paused, ended: rec.ended,
+        t: rec.currentTime, duration: rec.duration, loop: rec.loop, muted: rec.muted, src: rec.getAttribute('src') },
+      badgeShown: document.querySelector('.phone-recording-badge').checkVisibility(),
+      badgeText: document.querySelector('.phone-recording-badge').textContent.trim(),
+      missingShown: document.querySelector('.phone-recording-missing').checkVisibility(),
+      missingText: document.querySelector('.phone-recording-missing').textContent.trim(),
       texts: visible('.phone-waiting p'),
       scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight],
       viewport: [innerWidth, innerHeight],
@@ -308,8 +351,16 @@ function checkFit(s, w, h, label) {
   expect(Math.abs(s.screen.w - expectedWidth) < 0.5, `${label}: 프레임 ${s.screen.w.toFixed(1)}x${s.screen.h.toFixed(1)} (영상 비율 폭 ${expectedWidth.toFixed(1)})`);
 }
 
+// 폰 프레임 상태별 기대값: [모드, 라이브 상태(녹화 모드면 따지지 않음), 스크린샷 이름]
+const PHONE_STATES = {
+  대기: ['live', 'waiting', 'waiting'],
+  연결: ['live', 'connected', 'video'],
+  녹화: ['recording', null, 'recording'],
+};
+
 // 안내 패널 6단계를 숫자 키로 차례로 넘기며 배치를 잰다
 async function checkAllSteps(tag, phoneState, width) {
+  const [expectMode, expectState, shotName] = PHONE_STATES[phoneState];
   const heights = [];
   for (let n = 1; n <= 6; n++) {
     await press(`Digit${n}`);
@@ -318,7 +369,7 @@ async function checkAllSteps(tag, phoneState, width) {
     const g = await run('__check.guide()');
     const label = `${tag} ${phoneState} ${n}단계`;
     const problems = [];
-    if (s.state !== (phoneState === '대기' ? 'waiting' : 'connected')) problems.push(`폰 상태 ${s.state}`);
+    if (s.mode !== expectMode || (expectState && s.state !== expectState)) problems.push(`폰 상태 ${s.mode}/${s.state}`);
     if (s.scroll[0] !== s.viewport[0] || s.scroll[1] !== s.viewport[1]) problems.push(`스크롤 ${s.scroll.join('x')}`);
     if (s.outOfView.length) problems.push(`화면 밖 ${JSON.stringify(s.outOfView)}`);
     if (g.step !== n || g.total !== 6) problems.push(`단계 표시 ${g.step}/${g.total}`);
@@ -328,10 +379,12 @@ async function checkAllSteps(tag, phoneState, width) {
     if (width === 1280 && (g.fontSize.title < 44 || g.fontSize.desc < 24)) problems.push(`글자 크기 ${g.fontSize.title}/${g.fontSize.desc}`);
     if (g.done !== '1'.repeat(n) + '0'.repeat(6 - n)) problems.push(`진행 표시 ${g.done}`);
     if (!g.sheet.endsWith(`/${STEP_ACTIONS[n - 1]}.png`) || !g.sheetLoaded) problems.push(`오리 동작 ${g.sheet}`);
-    if (g.elapsedShown !== (n === 2)) problems.push(`경과 시간 표시 ${g.elapsedShown}`);
+    // 경과 시간은 라이브 2단계에서만 보인다. 녹화 모드에서는 지금 AI가 답하는 중이 아니므로 숨긴다
+    if (g.elapsedShown !== (n === 2 && expectMode === 'live')) problems.push(`경과 시간 표시 ${g.elapsedShown}`);
+    if (s.badgeShown !== (expectMode === 'recording')) problems.push(`녹화 영상 표시 ${s.badgeShown}`);
     expect(problems.length === 0, `${label}: "${g.title}" 제목 ${g.fontSize.title}px 설명 ${g.descLines}줄 ${problems.join(', ')}`);
     heights.push(g.panelHeight);
-    await shot(`${tag}-steps-${phoneState === '대기' ? 'waiting' : 'video'}-${n}`);
+    await shot(`${tag}-steps-${shotName}-${n}`);
   }
   const spread = Math.max(...heights) - Math.min(...heights);
   expect(spread < 0.5, `${tag} ${phoneState}: 단계를 넘겨도 패널 높이 고정 (차이 ${spread.toFixed(1)}px)`);
@@ -341,7 +394,86 @@ await send('Network.enable');
 await send('Network.setCacheDisabled', { cacheDisabled: true });
 await send('Page.enable');
 
+// 경로를 그대로 보내는 HTTP 요청(fetch는 ..와 %2e%2e를 미리 정리해 버려서 경로 차단을 확인할 수 없다)
+function rawRequest(path, method = 'GET') {
+  return new Promise((resolve, reject) => {
+    const req = request({ host: '127.0.0.1', port: 4173, path, method }, (res) => {
+      res.resume();
+      res.on('end', () => resolve(res.statusCode));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+// 페이지 안 MediaRecorder로 테스트 영상(mp4)을 만든다. 테두리·시간 표시가 있어 탐색 위치가 스크린샷에 보인다.
+const RECORD_TEST_VIDEO = `(async () => {
+  const W = 360, H = 720, SECONDS = 8;
+  const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d'); const start = performance.now();
+  const draw = () => {
+    const t = (performance.now() - start) / 1000;
+    ctx.fillStyle = '#2F855A'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#E53E3E'; ctx.fillRect(0, 0, W, 12); ctx.fillRect(0, H - 12, W, 12); ctx.fillRect(0, 0, 12, H); ctx.fillRect(W - 12, 0, 12, H);
+    ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'center';
+    ctx.font = 'bold 40px sans-serif'; ctx.fillText('TEST ' + W + 'x' + H, W / 2, H / 2 - 40);
+    ctx.font = 'bold 64px sans-serif'; ctx.fillText(t.toFixed(1) + 's', W / 2, H / 2 + 50);
+  };
+  draw(); const timer = setInterval(draw, 33);
+  const recorder = new MediaRecorder(canvas.captureStream(30), { mimeType: 'video/mp4;codecs=avc1.42E01E', videoBitsPerSecond: 400000 });
+  const parts = []; recorder.ondataavailable = (e) => parts.push(e.data);
+  recorder.start(); await new Promise((r) => setTimeout(r, SECONDS * 1000)); recorder.stop();
+  await new Promise((r) => (recorder.onstop = r)); clearInterval(timer);
+  const bytes = new Uint8Array(await new Blob(parts).arrayBuffer());
+  let binary = ''; for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+})()`;
+
+const recState = () => run('__check.state()');
+const waitRec = (condition, ms = 5000) =>
+  run(`__check.waitFor(() => { const r = document.querySelector('.phone-recording'); return ${condition}; }, ${ms})`);
+
 try {
+  // 0) 서버 Range 요청
+  console.log('서버 Range');
+  const sampleUrl = `${BASE}assets/fonts/Pretendard-Regular.woff2`;
+  const sample = readFileSync(join(PUBLIC_DIR, 'assets/fonts/Pretendard-Regular.woff2'));
+  const size = sample.length;
+  let res = await fetch(sampleUrl);
+  await res.arrayBuffer();
+  expect(res.status === 200 && res.headers.get('accept-ranges') === 'bytes' && Number(res.headers.get('content-length')) === size,
+    `Range 없음: ${res.status}, Accept-Ranges ${res.headers.get('accept-ranges')}, 길이 ${res.headers.get('content-length')}`);
+  for (const [range, start, end] of [
+    ['bytes=0-99', 0, 99],
+    ['bytes=1000-', 1000, size - 1],
+    ['bytes=-500', size - 500, size - 1],
+    [`bytes=100-${size + 5000}`, 100, size - 1], // 끝이 파일 밖이면 파일 끝까지
+  ]) {
+    res = await fetch(sampleUrl, { headers: { Range: range } });
+    const body = Buffer.from(await res.arrayBuffer());
+    const ok = res.status === 206 && res.headers.get('content-range') === `bytes ${start}-${end}/${size}` && body.equals(sample.subarray(start, end + 1));
+    expect(ok, `${range}: ${res.status} ${res.headers.get('content-range')} 본문 ${body.length}바이트`);
+  }
+  for (const range of [`bytes=${size}-`, `bytes=${size + 10}-${size + 20}`, 'bytes=-0']) {
+    res = await fetch(sampleUrl, { headers: { Range: range } });
+    await res.arrayBuffer();
+    expect(res.status === 416 && res.headers.get('content-range') === `bytes */${size}`, `${range}: ${res.status} ${res.headers.get('content-range')} (범위 밖 416)`);
+  }
+  for (const range of ['items=0-10', 'bytes=0-1,5-6', 'bytes=50-10']) {
+    res = await fetch(sampleUrl, { headers: { Range: range } });
+    await res.arrayBuffer();
+    expect(res.status === 200, `${range}: ${res.status} (읽을 수 없는 Range는 무시하고 전체 200)`);
+  }
+  res = await fetch(sampleUrl, { method: 'HEAD', headers: { Range: 'bytes=0-9' } });
+  expect(res.status === 206 && res.headers.get('content-length') === '10', `HEAD + Range: ${res.status}, 길이 ${res.headers.get('content-length')}`);
+  for (const [path, method, want] of [
+    ['/../package.json', 'GET', 403], ['/%2e%2e/package.json', 'GET', 403], ['/..%5cpackage.json', 'GET', 403],
+    ['/assets/../../scripts/serve.mjs', 'GET', 403], ['/', 'POST', 405], ['/nope.png', 'GET', 404],
+  ]) {
+    const status = await rawRequest(path, method);
+    expect(status === want, `${method} ${path}: ${status} (기대 ${want})`);
+  }
+
   // 1) 안내 패널 6단계: 세 해상도 × 대기 / 연결
   for (const [w, h] of SIZES) {
     const tag = `${w}x${h}`;
@@ -454,6 +586,9 @@ try {
   expect(!(await run('__check.guide()')).helpShown, '반복 입력 무시: H 반복으로 키 안내가 켜지지 않음');
   await press('KeyC', { repeat: true });
   expect((await run('__check.calls.length')) === 0, '반복 입력 무시: C 반복으로 화면 공유가 열리지 않음');
+  for (const code of ['KeyR', 'KeyP', 'Comma', 'Period', 'KeyL']) await press(code, { repeat: true });
+  const afterRepeat = await run('__check.state()');
+  expect(afterRepeat.mode === 'live' && !afterRepeat.rec.src, `반복 입력 무시: R·P·,·.·L 반복으로 녹화 모드가 되지 않음 (${afterRepeat.mode})`);
 
   // Ctrl·Alt·Meta가 함께 눌린 입력은 모두 무시하고, 기본 동작도 막지 않는다(브라우저 단축키에 맡긴다).
   // 실제 키 입력(Input.dispatchKeyEvent)으로 보내면 헤드리스 Chrome이 단축키를 실행해
@@ -465,6 +600,9 @@ try {
     ['ArrowRight', 'ArrowRight', { ctrlKey: true }], ['ArrowLeft', 'ArrowLeft', { altKey: true }],
     ['Home', 'Home', { ctrlKey: true }], ['Digit5', '5', { altKey: true }], ['Digit6', '6', { metaKey: true }],
     ['KeyH', 'h', { ctrlKey: true }],
+    ['KeyR', 'r', { ctrlKey: true }], ['KeyR', 'R', { ctrlKey: true, shiftKey: true }], ['KeyR', 'r', { metaKey: true }],
+    ['KeyP', 'p', { ctrlKey: true }], ['KeyL', 'l', { ctrlKey: true }], ['KeyL', 'l', { altKey: true }],
+    ['Comma', ',', { ctrlKey: true }], ['Period', '.', { altKey: true }],
   ].map(([code, key, mods]) => {
     const event = new KeyboardEvent('keydown', { code, key, bubbles: true, cancelable: true, ...mods });
     document.dispatchEvent(event);
@@ -473,6 +611,8 @@ try {
   const afterMods = await run('({ calls: __check.calls.length, guide: __check.guide() })');
   expect(afterMods.calls === 0, `수정 키 무시: Ctrl+C, Ctrl+Shift+C, Alt+C, Meta+C가 화면 공유를 열지 않음 (${afterMods.calls}회)`);
   expect(afterMods.guide.step === 3 && !afterMods.guide.helpShown, `수정 키 무시: 단계·키 안내 그대로 (${afterMods.guide.step}단계)`);
+  const modeAfterMods = await run('__check.state()');
+  expect(modeAfterMods.mode === 'live' && !modeAfterMods.rec.src, `수정 키 무시: Ctrl+R, Ctrl+P, Ctrl+L 등이 녹화 모드를 켜지 않음 (${modeAfterMods.mode})`);
   const wronglyPrevented = modCombos.filter((k) => k.prevented);
   expect(wronglyPrevented.length === 0, `수정 키 조합 ${modCombos.length}개는 기본 동작을 막지 않음 ${wronglyPrevented.length ? JSON.stringify(wronglyPrevented) : ''}`);
 
@@ -489,6 +629,11 @@ try {
   await sleep(100);
   const afterC = await run('({ calls: __check.calls.length, step: __check.guide().step })');
   expect(afterC.calls === 1 && afterC.step === 3, `C: getDisplayMedia ${afterC.calls}회, 단계 ${afterC.step} 유지`);
+
+  // 녹화 키도 기본 동작 막기 기록에 넣는다(R로 녹화 모드 → P·,·. → L로 복귀). 동작 자체는 아래 녹화 모드 확인에서 본다
+  for (const code of ['KeyR', 'KeyP', 'Comma', 'Period', 'KeyL']) await press(code);
+  const afterRecKeys = await run('({ mode: __check.state().mode, step: __check.guide().step, calls: __check.calls.length })');
+  expect(afterRecKeys.mode === 'live' && afterRecKeys.step === 3 && afterRecKeys.calls === 1, `R → L: 라이브로 돌아오고 단계·화면 공유 그대로 (${JSON.stringify(afterRecKeys)})`);
 
   // 기본 동작 막기: 셸이 맡은 키(실제 키 입력, 반복 포함)는 모두 막는다
   const keyLog = (await run('__check.keys')).filter((k) => !k.mods || k.mods === 'Shift');
@@ -552,14 +697,153 @@ try {
   expect(reduced.sheetAnim === 'none' && reduced.waitingDuck === 'none', `동작 줄이기: 오리 동작 멈춤 (${reduced.sheetAnim}, ${reduced.waitingDuck})`);
   await send('Emulation.setEmulatedMedia', { features: [] });
 
-  // 6) 네트워크
+  // 6) 녹화 모드
+  console.log('녹화 모드');
+  if (realRecording) {
+    console.log('  건너뜀: 실제 녹화(public/recordings/demo.mp4)가 있어요. 파일을 잠시 다른 곳으로 옮기면 전부 확인할 수 있어요.');
+  } else {
+    // 파일이 없을 때 안내
+    await load(1280, 720);
+    await press('KeyR');
+    await run(`__check.waitFor(() => document.querySelector('.phone').dataset.recording === 'missing')`);
+    let s = await recState();
+    expect(s.mode === 'recording' && s.missingShown && s.missingText === '녹화 영상이 없어요 (public/recordings/demo.mp4)' && !s.rec.shown,
+      `파일 없음: 안내 "${s.missingText}" 표시 ${s.missingShown}`);
+    expect(s.badgeShown, `파일 없음: "녹화 영상" 표시는 그대로 (${s.badgeShown})`);
+    checkLayout(s, '파일 없음');
+    await shot('recording-missing');
+    await press('KeyL');
+    s = await recState();
+    expect(s.mode === 'live' && s.state === 'waiting' && !s.missingShown && !s.badgeShown, `파일 없음 → L: 대기 화면 (${s.mode}/${s.state})`);
+
+    // 테스트 영상 만들기 (표시 파일을 먼저 만들어, 중간에 멈춰도 다음 실행에서 지울 수 있게 한다)
+    console.log('  테스트 영상 녹화 중(8초)');
+    const video64 = await run(RECORD_TEST_VIDEO);
+    mkdirSync(RECORDINGS_DIR, { recursive: true });
+    writeFileSync(TEST_MARK, 'npm run check가 만든 테스트 영상 표시. 이 파일이 있으면 demo.mp4는 테스트 영상이다.\n');
+    writeFileSync(DEMO_PATH, Buffer.from(video64, 'base64'));
+    res = await fetch(`${BASE}recordings/demo.mp4`, { headers: { Range: 'bytes=0-15' } });
+    await res.arrayBuffer();
+    expect(res.status === 206 && res.headers.get('content-type') === 'video/mp4', `demo.mp4: ${res.status} ${res.headers.get('content-type')}`);
+
+    // R: 처음부터 재생. 2단계에서 경과 시간이 숨는지 함께 본다
+    await load(1280, 720);
+    await press('Digit2');
+    await press('KeyR');
+    await waitRec('!r.paused && r.currentTime > 0.5');
+    s = await recState();
+    let g = await run('__check.guide()');
+    expect(s.mode === 'recording' && s.bodyMode === 'recording' && s.rec.shown && !s.video.shown, `R: 녹화 모드, 녹화 영상 표시 (${s.mode})`);
+    expect(!s.rec.paused && s.rec.muted && !s.rec.loop, `R: 재생 중, 소리 없음, 반복 없음 (paused ${s.rec.paused}, muted ${s.rec.muted}, loop ${s.rec.loop})`);
+    expect(s.badgeShown && s.badgeText === '녹화 영상', `R: "녹화 영상" 표시 (${s.badgeShown})`);
+    expect(s.aspectVar === '360 / 720' && Math.abs(s.screen.w - s.screen.h / 2) < 0.5, `R: 비율 ${s.aspectVar}, 프레임 ${s.screen.w.toFixed(1)}x${s.screen.h.toFixed(1)}`);
+    expect(g.step === 2 && !g.elapsedShown, `R: 2단계 경과 시간 숨김 (${g.elapsedShown})`);
+    checkLayout(s, 'R 재생');
+    await shot('recording-playing-step2');
+
+    // P: 일시정지 → 시간이 멈춘다
+    await press('KeyP');
+    await sleep(200);
+    const paused1 = (await recState()).rec;
+    await sleep(500);
+    const paused2 = (await recState()).rec;
+    expect(paused1.paused && paused1.t === paused2.t, `P: 일시정지 (${paused1.t.toFixed(2)}s → ${paused2.t.toFixed(2)}s)`);
+
+    // . / , : 5초 앞으로 / 뒤로
+    const t1 = paused2.t;
+    await press('Period');
+    await waitRec(`Math.abs(r.currentTime - ${t1 + 5}) < 0.05 && !r.seeking`);
+    const fwd = (await recState()).rec.t;
+    await press('Comma');
+    await waitRec(`Math.abs(r.currentTime - ${t1}) < 0.05 && !r.seeking`);
+    const back = (await recState()).rec.t;
+    expect(Math.abs(fwd - (t1 + 5)) < 0.05 && Math.abs(back - t1) < 0.05, `. / ,: ${t1.toFixed(2)}s → ${fwd.toFixed(2)}s → ${back.toFixed(2)}s`);
+    await press('Comma');
+    await waitRec('r.currentTime === 0 && !r.seeking');
+    expect((await recState()).rec.t === 0, ', 처음보다 앞으로는 가지 않음 (0초에서 멈춤)');
+
+    // P: 다시 재생
+    await press('KeyP');
+    await waitRec('!r.paused && r.currentTime > 0.2');
+    expect(!(await recState()).rec.paused, 'P: 다시 재생');
+
+    // 끝까지: 마지막 화면에서 멈추고 반복하지 않는다
+    await press('Period');
+    await press('Period');
+    await waitRec('r.ended', 8000);
+    await sleep(800);
+    s = await recState();
+    expect(s.rec.ended && s.rec.paused && Math.abs(s.rec.t - s.rec.duration) < 0.1 && s.rec.shown,
+      `끝: 마지막 화면에서 멈춤 (${s.rec.t.toFixed(2)}s / ${s.rec.duration.toFixed(2)}s, ended ${s.rec.ended})`);
+    await shot('recording-ended');
+
+    // R 다시: 처음부터 다시 재생
+    await press('KeyR');
+    await waitRec('!r.paused && r.currentTime > 0.1 && r.currentTime < 2');
+    s = await recState();
+    expect(!s.rec.paused && s.rec.t < 2, `R 다시: 처음부터 재생 (${s.rec.t.toFixed(2)}s)`);
+
+    // L: 화면 공유가 없으면 대기 화면. 2단계 경과 시간이 다시 보인다
+    await press('KeyL');
+    s = await recState();
+    g = await run('__check.guide()');
+    expect(s.mode === 'live' && s.bodyMode === 'live' && s.state === 'waiting' && s.texts.includes('곧 앱 화면이 나와요'), `L(스트림 없음): 대기 화면 (${s.mode}/${s.state})`);
+    expect(!s.badgeShown && s.rec.paused && s.aspectVar === '9 / 20' && g.elapsedShown, `L: "녹화 영상" 숨김, 녹화 정지, 비율 기본값, 경과 시간 다시 보임 (${s.aspectVar})`);
+
+    // 라이브 → 녹화 → L: 화면 공유 스트림을 끊지 않고 바로 폰 화면으로 돌아온다
+    await attachTestVideo(1080, 2400);
+    await run('__check.stubCapture()');
+    await press('KeyR');
+    await waitRec('!r.paused && r.currentTime > 0.3');
+    s = await recState();
+    let live = await run(`({ track: __check.a.stream.getVideoTracks()[0].readyState })`);
+    expect(s.mode === 'recording' && s.aspectVar === '360 / 720' && s.video.hasSrc && live.track === 'live',
+      `라이브 → R: 녹화 표시, 화면 공유는 살아 있음 (${live.track}, 비율 ${s.aspectVar})`);
+    await shot('recording-over-live');
+    await press('KeyL');
+    await sleep(200);
+    s = await recState();
+    live = await run(`({ track: __check.a.stream.getVideoTracks()[0].readyState, calls: __check.calls.length })`);
+    expect(s.mode === 'live' && s.state === 'connected' && s.video.shown && s.aspectVar === '1080 / 2400' && live.track === 'live' && live.calls === 0,
+      `R → L: 창을 다시 고르지 않고 폰 화면 복귀 (${s.state}, 비율 ${s.aspectVar}, 공유 창 ${live.calls}회)`);
+
+    // 녹화 중 C: 고르기를 취소하면 녹화 유지, 새 창을 고르면 라이브로 돌아온다
+    await press('KeyR');
+    await press('KeyC');
+    await sleep(200);
+    s = await recState();
+    expect(s.mode === 'recording' && (await run('__check.calls.length')) === 1, `녹화 중 C 취소: 녹화 유지 (${s.mode})`);
+    await run(`(() => {
+      __check.b = __check.makeStream(1080, 2340);
+      navigator.mediaDevices.getDisplayMedia = async () => __check.b.stream;
+    })()`);
+    await press('KeyC');
+    await run(`__check.waitFor(() => __check.aspect() === '1080 / 2340')`);
+    s = await recState();
+    expect(s.mode === 'live' && s.state === 'connected' && s.aspectVar === '1080 / 2340' && !s.badgeShown, `녹화 중 C 새 창: 라이브로 복귀 (${s.mode}, 비율 ${s.aspectVar})`);
+
+    // 녹화 모드 배치: 세 해상도 × 6단계
+    for (const [w, h] of SIZES) {
+      const tag = `${w}x${h}`;
+      await load(w, h);
+      await press('KeyR');
+      await waitRec('!r.paused && r.currentTime > 0.2');
+      await checkAllSteps(tag, '녹화', w);
+    }
+  }
+
+  // 7) 네트워크
   console.log('네트워크');
   const unique = [...new Set(requests)];
   const external = unique.filter((url) => !url.startsWith(BASE) && !url.startsWith('data:') && !url.startsWith('about:'));
   expect(external.length === 0, `외부 요청 0건 ${external.length ? JSON.stringify(external) : ''}`);
-  for (const path of ['scripts/main.js', 'scripts/phone-view.js', 'scripts/guide.js', 'scripts/steps.js']) {
+  for (const path of ['scripts/main.js', 'scripts/phone-view.js', 'scripts/guide.js', 'scripts/steps.js', 'scripts/recording.js']) {
     const mime = responses.get(BASE + path);
     expect(mime === 'text/javascript', `${path} MIME = ${mime}`);
+  }
+  if (!realRecording) {
+    const mime = responses.get(`${BASE}recordings/demo.mp4`);
+    expect(mime === 'video/mp4', `recordings/demo.mp4 MIME = ${mime}`);
   }
   writeFileSync(join(OUT, 'report.json'), JSON.stringify({ requests: unique, external, mime: Object.fromEntries(responses), failures }, null, 2));
 } catch (error) {
@@ -567,8 +851,11 @@ try {
   console.error(error);
 } finally {
   cleanup();
+  // 테스트 영상은 반드시 지운다(표시 파일이 있을 때만. 실제 녹화는 건드리지 않는다)
+  removeTestVideo();
 }
 
-console.log(`\n결과: ${failures.length ? `실패 ${failures.length}건` : '모두 통과'}`);
+const skipped = realRecording ? ' (실제 녹화 파일이 있어 녹화 모드 확인은 건너뜀)' : '';
+console.log(`\n결과: ${failures.length ? `실패 ${failures.length}건` : '모두 통과'}${skipped}`);
 console.log(`스크린샷과 report.json: ${OUT}`);
 process.exit(failures.length ? 1 : 0);

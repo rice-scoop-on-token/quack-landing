@@ -82,6 +82,7 @@ ol {
 
 /* Galmuri11은 12px 단위에서 가장 선명하다. 픽셀 글꼴 크기는 12px 배수로 맞춘다 */
 .phone-waiting-title,
+.phone-recording-badge,
 .guide-step {
   font-family: var(--family-pixel);
   font-size: 24px;
@@ -144,6 +145,65 @@ ol {
 .phone:not([data-state='waiting']) [data-show='waiting'],
 .phone:not([data-state='disconnected']) [data-show='disconnected'] {
   display: none;
+}
+
+/* ---------- 녹화 모드: 사전 녹화 영상 ---------- */
+
+.phone-recording,
+.phone-recording-missing,
+.phone-recording-badge {
+  display: none;
+}
+
+/* 녹화 모드에서는 라이브 화면(영상·대기 화면)을 가리고 녹화 영상을 보여 준다. 라이브 스트림은 뒤에서 그대로 살아 있다 */
+.phone[data-mode='recording'] .phone-video,
+.phone[data-mode='recording'] .phone-waiting {
+  display: none;
+}
+
+.phone[data-mode='recording'] .phone-recording {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--color-outline);
+}
+
+/* 파일이 없거나 재생에 실패하면 영상 대신 작은 안내만 둔다 */
+.phone[data-mode='recording'][data-recording='missing'] .phone-recording {
+  display: none;
+}
+
+.phone[data-mode='recording'][data-recording='missing'] .phone-recording-missing {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(24 * var(--u));
+  color: var(--color-text-sub);
+  font-size: calc(16 * var(--u));
+  text-align: center;
+  word-break: break-word;
+}
+
+/* 관람객이 1m 밖에서도 녹화임을 알 수 있게 프레임 위쪽 가운데에 둔다 */
+.phone[data-mode='recording'] .phone-recording-badge {
+  position: absolute;
+  top: calc(16 * var(--u));
+  left: 50%;
+  display: block;
+  transform: translateX(-50%);
+  padding: calc(4 * var(--u)) calc(14 * var(--u));
+  border: var(--paper-border) solid var(--color-card);
+  border-radius: calc(var(--radius-small) * var(--paper-scale) * var(--u));
+  background: var(--color-outline);
+  color: var(--color-card);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .phone-waiting {
@@ -338,6 +398,11 @@ ol {
   visibility: hidden;
 }
 
+/* 녹화 영상을 보여 줄 때는 지금 AI가 답하는 중이 아니므로 경과 시간을 숨긴다(자리는 남긴다) */
+body[data-phone-mode='recording'] .guide-elapsed {
+  visibility: hidden;
+}
+
 /* 오리 동작 시트(256px 칸 6개)를 칸 크기 창 안에서 한 칸씩 옮긴다. 앱과 같이 칸당 250ms.
  * image-rendering은 기본값으로 둔다. 표시 크기(128~192px)에서 pixelated는 외곽선 굵기가
  * 칸마다 들쭉날쭉하고 기본값이 고르다(스크린샷 비교). */
@@ -381,12 +446,16 @@ ol {
 
 /* ---------- 발표자용 키 안내 (H) ---------- */
 
+/* 키가 많아 오른쪽 아래에서 2줄로 접는다. 폰 프레임 아래로 넘어가지 않게 폭을 오른쪽 열만큼으로 둔다 */
 .keys-help {
   position: fixed;
   right: calc(16 * var(--u));
-  bottom: calc(10 * var(--u));
+  bottom: calc(8 * var(--u));
   display: flex;
-  gap: calc(16 * var(--u));
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: calc(560 * var(--u));
+  gap: calc(4 * var(--u)) calc(16 * var(--u));
   color: var(--color-muted-strong);
   font-size: calc(14 * var(--u));
 }

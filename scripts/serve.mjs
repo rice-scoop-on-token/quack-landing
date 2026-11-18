@@ -1,7 +1,9 @@
 // 부스 시연 화면용 정적 서버. 의존성 없이 Node 기본 모듈만 쓴다.
 // 127.0.0.1에서만 열어 같은 노트북 밖에서는 접속할 수 없게 한다.
+// 녹화 영상 재생·탐색을 위해 Range 요청(일부만 받기)을 지원한다.
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,8 +42,36 @@ function resolvePath(urlPath) {
   return filePath.startsWith(ROOT) || filePath + sep === ROOT ? filePath : null;
 }
 
-function send(res, status, body, type = 'text/plain; charset=utf-8') {
-  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+// Range 헤더를 읽는다.
+//   null       → Range를 무시하고 파일 전체를 보낸다(헤더 없음, 형식이 틀림, 범위가 여러 개)
+//   'invalid'  → 파일 크기를 벗어난 범위(416)
+//   {start, end} → 그 범위만 보낸다(206). end는 포함
+function parseRange(header, size) {
+  if (!header) return null;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!match) return null;
+  const [, startText, endText] = match;
+  if (startText === '' && endText === '') return null;
+
+  let start;
+  let end;
+  if (startText === '') {
+    // bytes=-n: 마지막 n바이트
+    const suffix = Number(endText);
+    if (suffix === 0) return 'invalid';
+    start = Math.max(size - suffix, 0);
+    end = size - 1;
+  } else {
+    start = Number(startText);
+    end = endText === '' ? size - 1 : Math.min(Number(endText), size - 1);
+    if (endText !== '' && Number(endText) < start) return null;
+  }
+  if (start >= size || size === 0) return 'invalid';
+  return { start, end };
+}
+
+function send(res, status, body, headers = {}) {
+  res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', ...headers });
   res.end(body);
 }
 
@@ -57,17 +87,47 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  let info;
   try {
-    if ((await stat(filePath)).isDirectory()) filePath = join(filePath, 'index.html');
-    const body = await readFile(filePath);
-    const type = MIME[extname(filePath).toLowerCase()] ?? 'application/octet-stream';
-    // 시연 중 파일을 고치면 새로고침만으로 바로 반영되도록 캐시를 끈다.
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': body.length, 'Cache-Control': 'no-store' });
-    res.end(req.method === 'HEAD' ? undefined : body);
+    info = await stat(filePath);
+    if (info.isDirectory()) {
+      filePath = join(filePath, 'index.html');
+      info = await stat(filePath);
+    }
   } catch (error) {
-    if (error.code === 'ENOENT' || error.code === 'EISDIR') send(res, 404, 'Not Found');
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') send(res, 404, 'Not Found');
     else send(res, 500, 'Internal Server Error');
+    return;
   }
+
+  const size = info.size;
+  const headers = {
+    'Content-Type': MIME[extname(filePath).toLowerCase()] ?? 'application/octet-stream',
+    // 시연 중 파일을 고치면 새로고침만으로 바로 반영되도록 캐시를 끈다.
+    'Cache-Control': 'no-store',
+    'Accept-Ranges': 'bytes',
+  };
+
+  const range = parseRange(req.headers.range, size);
+  if (range === 'invalid') {
+    send(res, 416, 'Range Not Satisfiable', { 'Content-Range': `bytes */${size}`, 'Accept-Ranges': 'bytes' });
+    return;
+  }
+
+  const { start, end } = range ?? { start: 0, end: size - 1 };
+  const status = range ? 206 : 200;
+  if (range) headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
+  headers['Content-Length'] = size === 0 ? 0 : end - start + 1;
+  res.writeHead(status, headers);
+
+  if (req.method === 'HEAD' || size === 0) {
+    res.end();
+    return;
+  }
+  // 영상처럼 큰 파일도 메모리에 다 읽지 않고 필요한 범위만 흘려보낸다
+  const stream = createReadStream(filePath, { start, end });
+  stream.on('error', () => res.destroy());
+  stream.pipe(res);
 });
 
 server.on('error', (error) => {
