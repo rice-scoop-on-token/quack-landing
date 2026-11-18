@@ -1,5 +1,8 @@
 node_modules/
 
+# 시연 노트북용 scrcpy (공식 릴리스를 직접 받아두기)
+scrcpy-win64-*/
+
 # 비밀 값은 이 레포에 두지 않는다
 .env
 .env.*
