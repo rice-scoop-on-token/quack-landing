@@ -34,12 +34,16 @@
   --paper-shadow: calc(var(--size-card-shadow) * var(--paper-scale) * var(--u));
   --paper-radius: calc(var(--radius-large) * var(--paper-scale) * var(--u));
 
-  /* 폰 화면 비율(가로 / 세로). 2번 커밋에서 미러링 영상 비율로 바꾼다 */
+  /* 폰 화면 비율(가로 / 세로). 영상이 연결되면 scripts/phone-view.js가 영상 비율로 바꾼다 */
   --phone-aspect: 9 / 20;
+  /* 잘못된 창(가로로 긴 창)을 골라도 안내 패널을 밀어내지 않도록 폭을 높이의 0.75배까지만 허용한다 */
+  --phone-max-aspect: 0.75;
   /* 미러링된 앱 글자는 작아서 프레임 높이가 곧 가독성이다. 위아래 여백과 테두리를 얇게 둔다 */
   --stage-pad-y: calc(12 * var(--u));
   --phone-border: calc(var(--size-card-border) * 2.5 * var(--u));
   --phone-radius: calc(var(--radius-large) * 2.5 * var(--u));
+  /* 화면 높이에서 위아래 여백, 테두리, 그림자만 뺀 만큼이 폰 화면 높이다 */
+  --phone-screen-height: calc(100vh - 2 * var(--stage-pad-y) - 2 * var(--phone-border) - var(--paper-shadow));
 
   --family-pixel: 'Galmuri11', 'Pretendard', sans-serif;
   --family-body: 'Pretendard', 'Malgun Gothic', sans-serif;
@@ -105,11 +109,38 @@ p {
 .phone-screen {
   position: relative;
   overflow: hidden;
-  /* 화면 높이에서 위아래 여백, 테두리, 그림자만 뺀 만큼 차지한다. 가로는 비율로 정해진다 */
-  height: calc(100vh - 2 * var(--stage-pad-y) - 2 * var(--phone-border) - var(--paper-shadow));
+  /* 높이를 먼저 정하고 가로는 비율로 정한다 */
+  height: var(--phone-screen-height);
   aspect-ratio: var(--phone-aspect);
+  max-width: calc(var(--phone-screen-height) * var(--phone-max-aspect));
   border-radius: calc(var(--phone-radius) - var(--phone-border));
   background: var(--color-card);
+}
+
+/* 영상은 프레임을 가득 채우되 잘리지 않게 한다. 프레임 비율을 영상 비율에 맞추므로 보통 빈틈이 없고,
+ * 폭 상한에 걸린 가로 영상만 위아래가 비는데, 그 자리는 외곽선 색으로 둔다 */
+.phone-video {
+  position: absolute;
+  inset: 0;
+  display: none;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--color-outline);
+}
+
+.phone[data-state='connected'] .phone-video {
+  display: block;
+}
+
+.phone[data-state='connected'] .phone-waiting {
+  display: none;
+}
+
+/* 대기 문구는 상태에 맞는 것만 보인다 */
+.phone:not([data-state='waiting']) [data-show='waiting'],
+.phone:not([data-state='disconnected']) [data-show='disconnected'] {
+  display: none;
 }
 
 .phone-waiting {
@@ -122,6 +153,7 @@ p {
   gap: calc(12 * var(--u));
   padding: calc(24 * var(--u));
   text-align: center;
+  word-break: keep-all;
 }
 
 /* image-rendering은 기본값으로 둔다. 원본이 가장자리가 부드럽게 섞인 그림이라
@@ -141,6 +173,16 @@ p {
 .phone-waiting-sub {
   color: var(--color-text-sub);
   font-size: calc(18 * var(--u));
+}
+
+/* 발표자용 힌트. 관람객 눈에 띄지 않게 아래쪽에 작게 둔다 */
+.phone-waiting-hint {
+  position: absolute;
+  bottom: calc(20 * var(--u));
+  left: 0;
+  right: 0;
+  color: var(--color-muted-strong);
+  font-size: calc(14 * var(--u));
 }
 
 /* 픽셀 캐릭터답게 부드럽게 움직이지 않고 두 칸으로 톡톡 뛴다 */

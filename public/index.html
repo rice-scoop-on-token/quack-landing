@@ -8,16 +8,22 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="styles/tokens.css">
   <link rel="stylesheet" href="styles/shell.css">
+  <script type="module" src="scripts/main.js"></script>
 </head>
 <body>
   <main class="stage">
-    <!-- 왼쪽: 폰 프레임. 2번 커밋에서 화면 안에 미러링 영상이 들어간다 -->
-    <section class="phone" aria-label="앱 화면">
+    <!-- 왼쪽: 폰 프레임. data-state: waiting(처음) / connected(영상 표시 중) / disconnected(끊김) -->
+    <section class="phone" data-state="waiting" aria-label="앱 화면">
       <div class="phone-screen">
+        <video class="phone-video" muted playsinline autoplay></video>
         <div class="phone-waiting">
           <img class="phone-waiting-duck" src="assets/animal/duck/baby/base.png" alt="" width="512" height="512">
-          <p class="phone-waiting-title">곧 앱 화면이 나와요</p>
-          <p class="phone-waiting-sub">폰 화면을 연결하고 있어요</p>
+          <p class="phone-waiting-title" data-show="waiting">곧 앱 화면이 나와요</p>
+          <p class="phone-waiting-sub" data-show="waiting">폰 화면을 연결하고 있어요</p>
+          <p class="phone-waiting-title" data-show="disconnected">폰 화면 연결이 끊겼어요</p>
+          <p class="phone-waiting-sub" data-show="disconnected">C를 눌러 다시 연결해요</p>
+          <!-- 발표자용 힌트. 관람객용 버튼은 두지 않는다 -->
+          <p class="phone-waiting-hint">C: 폰 화면 연결</p>
         </div>
       </div>
     </section>

@@ -12,7 +12,7 @@ Quack(꽥) 앱을 충남대 창의축전 부스(11/20 금)에서 시연하기 �
 ## 커밋 계획
 
 1. 레포 뼈대, 로컬 서버, 가로 화면 셸(폰 프레임 자리, 안내 패널, quack 디자인 토큰) — 완료
-2. 브라우저 화면 공유(getDisplayMedia)로 scrcpy 창을 잡아 폰 프레임 안에 실시간 표시
+2. 브라우저 화면 공유(getDisplayMedia)로 scrcpy 창을 잡아 폰 프레임 안에 실시간 표시 — 완료
 3. 안내 패널 단계 데이터와 방향키 전환, AI 답변 대기(8~15초) 중 설명 문구
 4. 대비책: 미러링 실패 시 quack 웹 빌드(실제 AI 모드) 전환, 인터넷 실패 시 사전 녹화 영상 재생
 
@@ -23,8 +23,11 @@ Quack(꽥) 앱을 충남대 창의축전 부스(11/20 금)에서 시연하기 �
 - `npm start` → `scripts/serve.mjs`(의존성 없음)가 127.0.0.1:4173에서 `public/`을 제공한다.
 - 프레임워크·번들러는 쓰지 않는다. HTML, CSS(필요해지면 순수 JS)만 쓴다.
 - `public/styles/tokens.css`: quack `frontend/src/theme/assetTokens.ts`를 옮긴 값. 상단에 quack 커밋 해시가 있다.
-- `public/styles/shell.css`: 배치와 paper UI. `--u`가 화면 배율(1280×720에서 1px), `--phone-aspect`가 폰 화면 비율이다.
+- `public/styles/shell.css`: 배치와 paper UI. `--u`가 화면 배율(1280×720에서 1px), `--phone-aspect`가 폰 화면 비율, `--phone-max-aspect`가 폰 프레임 폭 상한(높이 대비)이다.
+- `public/scripts/phone-view.js`: `attachStream(stream)`이 아무 MediaStream이나 폰 프레임 `<video>`에 붙이고, 영상 비율로 `--phone-aspect`를 갱신하고, 트랙이 끝나면 대기 화면(끊김 문구)으로 돌린다. 연결 중에는 Screen Wake Lock을 건다. 폰 상태는 `.phone[data-state]`(waiting / connected / disconnected)로 표시한다.
+- `public/scripts/main.js`: `C` 키·대기 화면 클릭 → getDisplayMedia → `attachStream`. 새 창을 고른 뒤에만 기존 스트림을 정리한다(취소하면 기존 화면 유지).
 - `public/assets/SOURCES.md`: 복사한 에셋과 글꼴의 출처·버전.
+- `scripts/check.mjs`(`npm run check`): 헤드리스 Chrome + DevTools 프로토콜 자동 확인. 서버가 꺼져 있으면 직접 띄운다. 테스트 영상(캔버스 `captureStream()`)은 이 스크립트가 페이지 안에서 `import('/scripts/phone-view.js')`로 넣고, 시연 화면 코드에는 테스트 경로를 두지 않는다. 결과는 OS 임시 폴더에만 쓴다.
 
 ## 디자인 기준
 
@@ -51,4 +54,5 @@ Quack(꽥) 앱을 충남대 창의축전 부스(11/20 금)에서 시연하기 �
 
 - `npm start` 후 http://127.0.0.1:4173 에서 화면이 열린다.
 - 개발자 도구 Network 탭에서 외부 요청이 0건이다.
-- 1280×720, 1536×864, 1920×1080에서 스크롤과 잘림이 없다. 헤드리스 Chrome(설치된 `chrome.exe --headless=new`와 DevTools 프로토콜)으로 스크린샷을 찍어 확인할 수 있다.
+- 1280×720, 1536×864, 1920×1080에서 스크롤과 잘림이 없다.
+- `npm run check`가 모두 통과하고, 저장된 스크린샷을 눈으로도 확인한다. 새 기능을 넣으면 이 스크립트에 확인 항목을 추가한다.
