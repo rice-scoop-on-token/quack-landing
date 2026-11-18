@@ -1,0 +1,13 @@
+node_modules/
+
+# 비밀 값은 이 레포에 두지 않는다
+.env
+.env.*
+
+# 4번 커밋 대비책: quack 웹 빌드 결과와 사전 녹화 영상 (크기가 커서 git에 넣지 않는다)
+public/web-build/
+public/recordings/
+
+# 운영체제·에디터
+.DS_Store
+Thumbs.db

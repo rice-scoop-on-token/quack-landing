@@ -1,0 +1,72 @@
+/*
+ * quack 디자인 토큰을 CSS 변수로 옮긴 파일. 값은 새로 만들지 않고 그대로 옮긴다.
+ * 출처: rice-scoop-on-token/quack  frontend/src/theme/assetTokens.ts
+ * quack 커밋: 1e50969e7b6fb8afff669f599273bb0328e071da
+ *
+ * 치수는 앱(React Native)과 같은 단위 없는 숫자로 둔다. 부스 화면은 이 값에
+ * 화면 크기 배율을 곱해 쓴다(shell.css의 --u, --paper-scale 참고).
+ * quack의 토큰이 바뀌면 이 파일을 다시 옮기고 위 커밋 해시를 고친다.
+ */
+:root {
+  /* COLORS */
+  --color-screen: #F7EFD8;
+  --color-card: #FFFBF0;
+  --color-text: #3B2A1A;
+  --color-text-sub: #7A6350;
+  --color-outline: #4B3226;
+  --color-primary: #F6C94F;
+  --color-accent: #E98A3A;          /* 면·테두리에만 쓴다. 글자에는 쓰지 않는다 */
+  --color-cream: #F2DDB6;
+  --color-disabled-bg: #E9DFC6;
+  --color-text-accent: #A4540F;     /* 글자용 주황 */
+  --color-danger: #A3321F;
+  --color-danger-bg: #F8DDD3;
+  --color-notice-bg: #FFF1CC;
+  --color-success-bg: #E3EFC9;
+  --color-input-bg: #FFFFFF;
+  --color-muted-strong: #6B5846;
+
+  /* RADIUS: 작은 버튼·태그 10, 버튼·입력·고르는 칸 12, 카드·패널 14 */
+  --radius-small: 10;
+  --radius-medium: 12;
+  --radius-large: 14;
+
+  /* SIZES */
+  --size-button-height: 52;
+  --size-button-border: 2;
+  --size-button-shadow: 3;
+  --size-button-small-height: 40;
+  --size-button-small-border: 2;
+  --size-button-small-shadow: 2;
+  --size-card-border: 2;
+  --size-card-padding-v: 14;
+  --size-card-padding-h: 16;
+  --size-card-shadow: 3;
+  --size-row-height: 56;
+  --size-row-border: 2;
+  --size-row-gap: 8;
+  --size-gutter: 16;
+  --size-section-gap: 24;
+  --size-card-gap: 16;
+  --size-touch-min: 44;
+
+  /* FONT (크기만. 굵기는 display·title·heading·button 700, body 400, caption·tabLabel 500) */
+  --font-display: 52;
+  --font-title: 20;
+  --font-heading: 17;
+  --font-button: 16;
+  --font-body: 15;
+  --font-caption: 12;
+  --font-tab-label: 11;
+
+  /* FEEDBACK */
+  --feedback-positive: #CFE3B5;
+  --feedback-negative: #F2C4B4;
+  --feedback-record: #D64545;
+
+  /*
+   * hardShadow(offset) = 0 offset 0 COLORS.outline (번지지 않는 그림자, blur 0).
+   * CSS 변수는 함수를 만들 수 없어서 쓰는 곳에서 아래처럼 쓴다.
+   *   box-shadow: 0 <offset> 0 var(--color-outline);
+   */
+}

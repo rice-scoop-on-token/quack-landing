@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quack 부스 시연</title>
+  <!-- 파비콘 요청(/favicon.ico)도 생기지 않도록 빈 아이콘을 넣는다 -->
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/shell.css">
+</head>
+<body>
+  <main class="stage">
+    <!-- 왼쪽: 폰 프레임. 2번 커밋에서 화면 안에 미러링 영상이 들어간다 -->
+    <section class="phone" aria-label="앱 화면">
+      <div class="phone-screen">
+        <div class="phone-waiting">
+          <img class="phone-waiting-duck" src="assets/animal/duck/baby/base.png" alt="" width="512" height="512">
+          <p class="phone-waiting-title">곧 앱 화면이 나와요</p>
+          <p class="phone-waiting-sub">폰 화면을 연결하고 있어요</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 오른쪽: 서비스명과 안내 패널 -->
+    <section class="side">
+      <header class="brand">
+        <h1 class="brand-name">Quack</h1>
+        <p class="brand-tagline">나만의 튜티가 되어주는 AI 서비스</p>
+        <p class="brand-team">토큰에 쌀밥 한 스쿱</p>
+      </header>
+
+      <!-- 3번 커밋에서 단계 데이터와 방향키 전환이 들어온다. 지금은 1단계만 고정으로 둔다 -->
+      <article class="guide" aria-live="polite">
+        <p class="guide-step"><span class="guide-step-now">1</span> / 6</p>
+        <h2 class="guide-title">내 말로 설명하기</h2>
+        <p class="guide-desc">오늘 공부한 내용을 오리에게 내 말로 설명해요.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

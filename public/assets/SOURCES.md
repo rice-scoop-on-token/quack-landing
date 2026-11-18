@@ -1,0 +1,31 @@
+# 에셋 출처
+
+이 폴더의 파일은 모두 아래 출처에서 복사했습니다. 화면에서 실제로 쓰는 파일만 둡니다.
+
+## quack 레포에서 복사
+
+quack 레포(`rice-scoop-on-token/quack`) 커밋 `1e50969e7b6fb8afff669f599273bb0328e071da` 기준입니다.
+
+| 이 레포 경로 | quack 원본 경로 | 쓰는 곳 |
+| --- | --- | --- |
+| `animal/duck/baby/base.png` | `frontend/assets/animal/duck/baby/base.png` | 폰 프레임 대기 화면의 오리 |
+
+## 글꼴
+
+npm 레지스트리에서 `npm pack`으로 받은 패키지에서 꺼냈습니다(2026-11-18에 받음). 버전을 고정했고, 받은 날 기준 최근 14일 안에 배포된 버전은 피했습니다.
+
+| 이 레포 경로 | 패키지 | 버전 | 배포일 | 패키지 안 경로 |
+| --- | --- | --- | --- | --- |
+| `fonts/Galmuri11-Bold.woff2` | `galmuri` | 2.40.3 | 2025-08-13 | `dist/Galmuri11-Bold.woff2` |
+| `fonts/OFL-Galmuri.txt` | `galmuri` | 2.40.3 | 2025-08-13 | `dist/LICENSE.txt` |
+| `fonts/Pretendard-Regular.woff2` | `pretendard` | 1.3.9 | 2023-11-05 | `dist/web/static/woff2/Pretendard-Regular.woff2` |
+| `fonts/Pretendard-Bold.woff2` | `pretendard` | 1.3.9 | 2023-11-05 | `dist/web/static/woff2/Pretendard-Bold.woff2` |
+| `fonts/OFL-Pretendard.txt` | `pretendard` | 1.3.9 | 2023-11-05 | `dist/LICENSE.txt` |
+
+두 글꼴 모두 SIL Open Font License 1.1입니다. 라이선스 전문은 각 `OFL-*.txt`에 있습니다.
+
+다시 받는 방법:
+
+```sh
+npm pack galmuri@2.40.3 pretendard@1.3.9
+```

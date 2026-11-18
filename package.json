@@ -1,0 +1,13 @@
+{
+  "name": "quack-landing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Quack 부스 시연 화면 (충남대 창의축전)",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/serve.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
