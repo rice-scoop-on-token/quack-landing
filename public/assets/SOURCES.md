@@ -14,6 +14,17 @@ quack 레포(`rice-scoop-on-token/quack`) 커밋 `1e50969e7b6fb8afff669f599273bb
 | `animal/duck/baby/actions/dejected.png` | `frontend/assets/animal/duck/baby/actions/dejected.png` | 안내 패널 3단계 오리 동작 |
 | `animal/duck/baby/actions/happy_jump.png` | `frontend/assets/animal/duck/baby/actions/happy_jump.png` | 안내 패널 5·6단계 오리 동작 |
 
+발표 슬라이드(`slides.html`)에 쓰려고 quack 커밋 `34e84b939a11b58f96c54a1a447630054d499abf` 기준으로 아래를 더 복사했습니다(`frontend/assets/animal/`은 `1e50969`와 이 커밋 사이에 바뀌지 않았습니다).
+
+| 이 레포 경로 | quack 원본 경로 | 쓰는 곳 |
+| --- | --- | --- |
+| `animal/duck/child/base.png` | `frontend/assets/animal/duck/child/base.png` | 슬라이드 1장(표지) 가운데 오리 |
+| `animal/duck/adult/base.png` | `frontend/assets/animal/duck/adult/base.png` | 슬라이드 1장(표지) 오른쪽 오리 |
+| `animal/cat/baby/base.png` | `frontend/assets/animal/cat/baby/base.png` | 슬라이드 7장 고양이 |
+| `animal/raccoon/baby/base.png` | `frontend/assets/animal/raccoon/baby/base.png` | 슬라이드 7장 라쿤 |
+
+슬라이드는 위 표의 오리 baby 파일도 함께 씁니다: `base.png`(1장 왼쪽 오리, 7장 러버덕), `actions/dejected.png`(4장), `actions/happy_jump.png`(9장).
+
 동작 시트는 1536×256(256px 칸 6개)이고, 단계별 동작은 quack `frontend/src/features/character/screenActions.ts`를 따릅니다(`public/scripts/steps.js` 주석 참고).
 
 ## 글꼴

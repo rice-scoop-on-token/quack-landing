@@ -134,6 +134,33 @@ if (-not (Test-Path public\recordings)) { New-Item -ItemType Directory public\re
 - 파일이 없거나 재생할 수 없으면 폰 프레임 안에 "녹화 영상이 없어요 (public/recordings/demo.mp4)"가 작게 나옵니다. 파일을 넣고 `R`을 다시 누르면 새로고침 없이 재생됩니다.
 - 영상은 소리 없이 재생되고, 끝나면 마지막 화면에서 멈춥니다.
 
+## 발표 슬라이드
+
+최종 제출용 5분 발표 영상(OBS 녹화)에 쓰는 슬라이드 11장입니다. 시연 화면과 따로 띄웁니다.
+
+- 주소: `npm start` 후 http://127.0.0.1:4173/slides.html
+- 16:9 고정이고 녹화 기준은 1920×1080입니다. 브라우저를 `F11` 전체 화면으로 둡니다. 1280×720에서도 배치가 같습니다.
+- 녹화에 잡히지 않도록 슬라이드 번호, 키 안내, 마우스 커서를 모두 숨깁니다.
+
+| 키 | 동작 |
+| --- | --- |
+| `→` / `PageDown` / `Space` | 다음 장 (마지막 장에서 멈춤) |
+| `←` / `PageUp` | 이전 장 (첫 장에서 멈춤) |
+| `Home` / `End` | 첫 장 / 마지막 장 |
+
+- 시연 화면과 같이 한글 입력 상태에서도 동작하고, Ctrl·Alt·Win 조합과 길게 누르기는 무시합니다.
+- 새로고침하면 1장부터 다시 시작합니다. 10장부터 다시 찍으려면 `End` → `←`를 누릅니다.
+
+OBS 장면 순서:
+
+1. **슬라이드** 1~9장 (9장 "실제 앱으로 보여 드릴게요"에서 장면을 바꿉니다)
+2. **시연** 시연 화면(http://127.0.0.1:4173/) — 위 "발표자 키"로 진행
+3. **슬라이드** 10~11장 (기대효과, 마무리)
+
+슬라이드와 시연 화면은 서로 다른 브라우저 창(또는 탭)에 띄워 두고 OBS 장면 전환으로 오갑니다. 장면을 바꾸면 키를 누를 창도 바꿔야 합니다(`Alt+Tab`). 슬라이드 창은 그동안 9장에 그대로 있으므로, 돌아와서 `→`를 누르면 10장으로 넘어갑니다.
+
+문구는 `public/slides.html`, 배치와 색은 `public/styles/slides.css`에서 고칩니다. 색은 `tokens.css`(quack 토큰) 값만 씁니다. 7장 동물 이름은 앱 `manifest.json`, 라벨·태그는 앱 `personas.ts`와 같아야 합니다(`npm run check`가 확인).
+
 ## 발표자 키
 
 | 키 | 동작 |
@@ -159,6 +186,7 @@ if (-not (Test-Path public\recordings)) { New-Item -ItemType Directory public\re
 
 자동 확인(헤드리스 Chrome, 결과는 OS 임시 폴더 `quack-landing-check`에 저장): `npm run check`
 
+- 발표 슬라이드(`slides.html`)도 함께 확인하고, 1280×720·1920×1080 전 장 스크린샷을 `slides-*.png`로 남깁니다.
 - 녹화 모드 확인 동안만 테스트 영상을 `public/recordings/demo.mp4`에 두고 끝나면 지웁니다. 실제 녹화 파일이 이미 있으면 건드리지 않고 녹화 확인을 건너뜁니다.
 
 - 화면 크기: 개발자 도구(F12) → 기기 툴바(`Ctrl+Shift+M`) → Dimensions를 Responsive로 두고 1280×720, 1536×864, 1920×1080을 입력합니다. 세 크기 모두 스크롤 없이 한 화면에 들어와야 합니다.
@@ -173,7 +201,7 @@ if (-not (Test-Path public\recordings)) { New-Item -ItemType Directory public\re
 
 ```text
 public/
-  index.html          화면 셸
+  index.html          시연 화면 셸
   styles/tokens.css   quack 디자인 토큰 (quack 레포에서 옮긴 값)
   styles/shell.css    배치와 paper UI 스타일
   scripts/main.js     발표자 키 연결 (단계 전환, 키 안내, 화면 공유, 녹화 영상)
@@ -181,6 +209,9 @@ public/
   scripts/guide.js    안내 패널 그리기·전환·2단계 경과 시간
   scripts/phone-view.js  폰 프레임 모드(라이브/녹화)·비율 맞추기·끊김 처리
   scripts/recording.js   녹화 영상 재생·일시정지·5초 이동
+  slides.html         발표 슬라이드 11장 (OBS 녹화용)
+  styles/slides.css   발표 슬라이드 배치와 paper UI 스타일
+  scripts/slides.js   발표 슬라이드 키 조작
   recordings/demo.mp4 사전 녹화 영상 (git 제외, 리허설 때 녹화)
   assets/             이미지·글꼴 (출처는 assets/SOURCES.md)
 scripts/serve.mjs     의존성 없는 로컬 정적 서버 (Range 요청 지원)

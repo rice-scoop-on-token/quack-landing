@@ -7,6 +7,8 @@
 //   - 2단계 경과 시간, 동작 줄이기, 외부 요청 0건, 모듈 스크립트 MIME
 //   - 서버 Range 요청(206, 416, 200)
 //   - 녹화 모드: 재생·일시정지·탐색·끝에서 멈춤, 비율, "녹화 영상" 표시, 경과 시간 숨김, 라이브 전환, 파일 없음 안내
+//   - 발표 슬라이드(slides.html): 11장 × 3해상도 배치(스크롤·잘림, 제목 한 줄, Galmuri 크기), 키 조작(다음/이전/Home/End),
+//     수정 키·반복 입력 무시, 커서·번호·키 안내 없음, 전환 200ms 이하, 동작 줄이기, 7장 동물 이름·라벨·태그
 // 스크린샷과 결과(report.json)는 OS 임시 폴더에만 저장한다.
 // 예외: 녹화 모드 확인 동안만 테스트 영상을 public/recordings/demo.mp4에 두고 끝나면 지운다(아래 "녹화 영상 보호").
 import { spawn } from 'node:child_process';
@@ -186,6 +188,10 @@ const KEYS = {
   ArrowRight: { key: 'ArrowRight', keyCode: 39 },
   ArrowLeft: { key: 'ArrowLeft', keyCode: 37 },
   Home: { key: 'Home', keyCode: 36 },
+  End: { key: 'End', keyCode: 35 },
+  PageDown: { key: 'PageDown', keyCode: 34 },
+  PageUp: { key: 'PageUp', keyCode: 33 },
+  Space: { key: ' ', keyCode: 32 },
   ...Object.fromEntries([1, 2, 3, 4, 5, 6].flatMap((n) => [
     [`Digit${n}`, { key: String(n), keyCode: 48 + n }],
     [`Numpad${n}`, { key: String(n), keyCode: 96 + n }],
@@ -319,12 +325,131 @@ globalThis.__check = {
 };
 `;
 
-async function load(width, height) {
+async function load(width, height, page = '', helpers = PAGE_HELPERS) {
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
-  await send('Page.navigate', { url: BASE });
+  await send('Page.navigate', { url: BASE + page });
   await sleep(300);
   await run(`(async () => { await new Promise(r => document.readyState === 'complete' ? r() : addEventListener('load', r)); await document.fonts.ready; })()`);
-  await run(PAGE_HELPERS);
+  await run(helpers);
+}
+
+// ---------- 발표 슬라이드(slides.html)용 도우미 ----------
+const SLIDE_COUNT = 11;
+// 7장 동물 카드. 이름은 quack frontend/assets/animal/manifest.json, 라벨·태그는 frontend/src/api/mock/data/personas.ts 값
+const SLIDE_ANIMALS = [
+  ['러버덕', '다정한 응원형', '차근차근,안심시키기,작은 성취'],
+  ['고양이', '명쾌한 질문형', '핵심 콕,논리 확인,짧고 선명하게'],
+  ['라쿤', '호기심 탐구형', '예시 탐험,비교하기,함께 발견'],
+];
+// 한 줄이어야 하는 제목들
+const SLIDE_TITLES = '.cover-title, .pill, .big-message, .hint-title, .flip-before, .flip-after, .animal-name, .compare-head, .effect-title, .closing-quack, .cover-quack';
+
+const SLIDE_HELPERS = `
+globalThis.__slides = {
+  active: () => {
+    const slides = [...document.querySelectorAll('.slide')];
+    // 숨은 장은 visibility: hidden이라 visibilityProperty를 켜야 안 보이는 것으로 잡힌다
+    const shown = slides.map((s, i) => s.checkVisibility({ visibilityProperty: true }) ? i + 1 : 0).filter(Boolean);
+    return { count: slides.length, shown, n: shown.length === 1 ? shown[0] : 0 };
+  },
+  // 키가 슬라이드 스크립트를 지난 뒤 기본 동작이 막혔는지 기록한다(window는 document 다음에 이벤트를 받는다)
+  logKeys: () => {
+    __slides.keys = [];
+    addEventListener('keydown', (e) => __slides.keys.push({ code: e.code, repeat: e.repeat, prevented: e.defaultPrevented }));
+  },
+  measure: () => {
+    const slide = document.querySelector('.slide.is-active');
+    const deck = document.querySelector('.deck').getBoundingClientRect();
+    const problems = [];
+    // 글자와 요소가 캔버스·화면 밖으로 나가지 않는지. overflow로 잘리는 조상이 있으면 잘린 뒤 보이는 영역만 따진다
+    // (오리 동작 시트는 한 칸 크기 창 안에서 잘려 보인다)
+    for (const el of [slide, ...slide.querySelectorAll('*')]) {
+      if (!el.checkVisibility()) continue;
+      const rects = [el.getBoundingClientRect()];
+      if (el.childNodes.length && [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) {
+        const range = document.createRange(); range.selectNodeContents(el); rects.push(range.getBoundingClientRect());
+      }
+      for (let { left, top, right, bottom } of rects) {
+        if (right - left === 0) continue;
+        for (let a = el.parentElement; a && a !== slide; a = a.parentElement) {
+          if (getComputedStyle(a).overflow === 'visible') continue;
+          const c = a.getBoundingClientRect();
+          left = Math.max(left, c.left); top = Math.max(top, c.top); right = Math.min(right, c.right); bottom = Math.min(bottom, c.bottom);
+        }
+        if (right <= left || bottom <= top) continue;
+        if (left < deck.left - 0.5 || top < deck.top - 0.5 || right > deck.right + 0.5 || bottom > deck.bottom + 0.5 ||
+            left < -0.5 || top < -0.5 || right > innerWidth + 0.5 || bottom > innerHeight + 0.5) {
+          problems.push('밖: ' + (el.className || el.tagName)); break;
+        }
+      }
+    }
+    // 제목은 한 줄이고 자기 칸 안에 들어간다
+    const titles = [];
+    for (const el of slide.querySelectorAll(${JSON.stringify(SLIDE_TITLES)})) {
+      const cs = getComputedStyle(el);
+      const range = document.createRange(); range.selectNodeContents(el);
+      const r = range.getBoundingClientRect();
+      const lineHeight = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
+      const contentWidth = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const lines = Math.round(r.height / lineHeight);
+      titles.push({ text: el.textContent.trim(), px: parseFloat(cs.fontSize), lines, width: Math.round(r.width), room: Math.round(contentWidth) });
+      if (lines !== 1) problems.push('제목 ' + lines + '줄: ' + el.textContent.trim());
+      if (r.width > contentWidth + 0.5) problems.push('제목 넘침: ' + el.textContent.trim() + ' (' + r.width.toFixed(1) + ' > ' + contentWidth.toFixed(1) + ')');
+    }
+    // 픽셀 글꼴은 12px 배수
+    for (const el of slide.querySelectorAll('*')) {
+      const cs = getComputedStyle(el);
+      if (cs.fontFamily.startsWith('Galmuri') && el.checkVisibility() && parseFloat(cs.fontSize) % 12) problems.push('Galmuri ' + cs.fontSize + ': ' + el.className);
+    }
+    // 그림이 모두 불러와졌는지
+    for (const img of slide.querySelectorAll('img')) if (!img.complete || !img.naturalWidth) problems.push('그림 없음: ' + img.getAttribute('src'));
+    return {
+      problems, titles,
+      scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight],
+      viewport: [innerWidth, innerHeight],
+      deck: [Math.round(deck.width), Math.round(deck.height)],
+    };
+  },
+  // 녹화에 잡히면 안 되는 것: 커서, 슬라이드 번호("3 / 11" 같은 글자), 키 안내, 캔버스 밖 요소
+  chrome: () => {
+    const all = [document.documentElement, document.body, ...document.querySelectorAll('body *')];
+    const cursors = [...new Set(all.map(el => getComputedStyle(el).cursor))];
+    const deck = document.querySelector('.deck');
+    const outside = [...document.querySelectorAll('body *')].filter(el => el.checkVisibility({ visibilityProperty: true }) && !deck.contains(el) && el !== deck).map(el => el.tagName);
+    const text = document.querySelector('.slide.is-active').innerText;
+    return {
+      cursors,
+      outside,
+      numberText: /\\d+\\s*\\/\\s*\\d+/.test(text) || /\\b${SLIDE_COUNT}\\b/.test(text),
+      helpers: document.querySelectorAll('kbd, .keys-help, [class*="number"], [class*="counter"], [class*="help"]').length,
+    };
+  },
+  animals: () => [...document.querySelectorAll('.animal')].map(a => [
+    a.querySelector('.animal-name').textContent.trim(),
+    a.querySelector('.animal-label').textContent.trim(),
+    [...a.querySelectorAll('.animal-tags li')].map(li => li.textContent.trim()).join(','),
+  ]),
+  // 겹치면 안 되는 표지 요소(학교·지도교수, 오리, 팀원)
+  coverOverlap: () => {
+    const r = (sel) => document.querySelector(sel).getBoundingClientRect();
+    const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    const ducks = r('.cover-ducks');
+    return { school: hit(ducks, r('.cover-school')), members: hit(ducks, r('.cover-members')), title: hit(ducks, r('.cover-title-row')) };
+  },
+};
+`;
+
+// 지금 보이는 슬라이드의 글자가 실제로 어떤 글꼴로 그려졌는지(DevTools가 알려 주는 실제 글꼴).
+// 로컬 글꼴(Galmuri11, Pretendard)에 없는 글자(예: ✓)가 시스템 글꼴로 대체되면 여기서 잡힌다.
+async function slideFonts() {
+  const { root } = (await send('DOM.getDocument', { depth: -1 })).result;
+  const { nodeIds } = (await send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: '.slide.is-active, .slide.is-active *' })).result;
+  const used = new Map();
+  for (const nodeId of nodeIds) {
+    const res = await send('CSS.getPlatformFontsForNode', { nodeId });
+    for (const font of res.result?.fonts ?? []) used.set(font.familyName, (used.get(font.familyName) ?? 0) + font.glyphCount);
+  }
+  return Object.fromEntries(used);
 }
 
 async function attachTestVideo(w, h) {
@@ -832,12 +957,167 @@ try {
     }
   }
 
-  // 7) 네트워크
+  // 7) 발표 슬라이드
+  await send('DOM.enable');
+  await send('CSS.enable');
+  const slideState = () => run('__slides.active()');
+  for (const [w, h] of SIZES) {
+    const tag = `${w}x${h}`;
+    console.log(`${tag} 발표 슬라이드`);
+    await load(w, h, 'slides.html', SLIDE_HELPERS);
+    let a = await slideState();
+    expect(a.count === SLIDE_COUNT && a.n === 1, `${tag} 슬라이드: ${a.count}장, 처음엔 1장만 보임 (${a.shown.join(',')})`);
+    // 1장부터 →로 차례로 넘기며 잰다. 스크린샷은 녹화 기준(1920×1080)과 가장 작은 화면(1280×720)에서 남긴다
+    for (let n = 1; n <= SLIDE_COUNT; n++) {
+      if (n > 1) await press('ArrowRight');
+      await sleep(240); // 전환(180ms)이 끝난 뒤 잰다
+      a = await slideState();
+      const m = await run('__slides.measure()');
+      const problems = [...m.problems];
+      if (a.n !== n || a.shown.length !== 1) problems.push(`보이는 장 ${a.shown.join(',')}`);
+      if (m.scroll[0] !== m.viewport[0] || m.scroll[1] !== m.viewport[1]) problems.push(`스크롤 ${m.scroll.join('x')}`);
+      const titles = m.titles.map((t) => `"${t.text}" ${t.px}px ${t.width}/${t.room}`).join(', ');
+      expect(problems.length === 0, `${tag} ${n}장: ${titles || '제목 없음'} ${problems.join(', ')}`);
+      if (w !== 1536) await shot(`slides-${tag}-${String(n).padStart(2, '0')}`);
+    }
+    // 캔버스는 16:9를 지키고 화면 안 가장 크게 놓인다
+    const m = await run('__slides.measure()');
+    expect(Math.abs(m.deck[0] / m.deck[1] - 16 / 9) < 0.01 && (m.deck[0] === w || m.deck[1] === h), `${tag} 캔버스 ${m.deck.join('x')} (16:9)`);
+  }
+
+  // 8장 알약 제목은 1280×720에서 한 줄이어야 한다(위 배치 확인에서도 보지만 따로 남긴다)
+  await load(1280, 720, 'slides.html', SLIDE_HELPERS);
+  await run(`import('/scripts/slides.js').then(m => m.showSlide(8))`);
+  await sleep(240);
+  const pill8 = (await run('__slides.measure()')).titles.find((t) => t.text.startsWith('04'));
+  expect(pill8 && pill8.lines === 1 && pill8.width <= pill8.room, `1280x720 8장 알약 "${pill8?.text}": ${pill8?.lines}줄, 글자 폭 ${pill8?.width} / 칸 ${pill8?.room}`);
+
+  // 7장 동물 이름(앱 manifest)과 라벨·태그(앱 personas.ts)
+  const animals = await run('__slides.animals()');
+  expect(JSON.stringify(animals) === JSON.stringify(SLIDE_ANIMALS), `7장 동물: ${animals.map((x) => x.join(' · ')).join(' / ')}`);
+
+  // 표지: 오리가 학교·지도교수, 팀원, 제목을 가리지 않는다
+  for (const [w, h] of [[1280, 720], [1920, 1080]]) {
+    await load(w, h, 'slides.html', SLIDE_HELPERS);
+    const overlap = await run('__slides.coverOverlap()');
+    expect(!overlap.school && !overlap.members && !overlap.title, `${w}x${h} 표지 겹침 없음 ${JSON.stringify(overlap)}`);
+  }
+
+  // 모든 글자가 로컬 글꼴(Galmuri11, Pretendard)로 그려진다(시스템 글꼴 대체 없음)
+  await load(1280, 720, 'slides.html', SLIDE_HELPERS);
+  const fontProblems = [];
+  for (let n = 1; n <= SLIDE_COUNT; n++) {
+    await run(`import('/scripts/slides.js').then(m => m.showSlide(${n}))`);
+    const fonts = await slideFonts();
+    // 실제 글꼴 이름은 굵기까지 붙어 나온다(예: "Galmuri11 Bold")
+    const others = Object.keys(fonts).filter((f) => !/^(Galmuri11|Pretendard)\b/.test(f));
+    if (others.length) fontProblems.push(`${n}장 ${JSON.stringify(fonts)}`);
+  }
+  expect(fontProblems.length === 0, `슬라이드 글자는 모두 Galmuri11·Pretendard ${fontProblems.join(' ')}`);
+
+  // 녹화에 잡히면 안 되는 것: 커서, 번호, 키 안내
+  const numbered = [];
+  for (let n = 1; n <= SLIDE_COUNT; n++) {
+    await run(`import('/scripts/slides.js').then(m => m.showSlide(${n}))`);
+    const c = await run('__slides.chrome()');
+    if (n === 1) {
+      expect(c.cursors.length === 1 && c.cursors[0] === 'none', `커서 숨김: 모든 요소 cursor ${c.cursors.join(',')}`);
+      expect(c.outside.length === 0 && c.helpers === 0, `캔버스 밖 요소·키 안내 없음 (${c.outside.join(',')}, ${c.helpers})`);
+    }
+    if (c.numberText) numbered.push(n);
+  }
+  expect(numbered.length === 0, `슬라이드 번호처럼 보이는 글자 없음 (${SLIDE_COUNT}장 확인) ${numbered.length ? numbered.join(',') + '장' : ''}`);
+
+  // 키 조작: 실제 키 입력
+  console.log('슬라이드 키 조작');
+  await load(1280, 720, 'slides.html', SLIDE_HELPERS);
+  await run('__slides.logKeys()');
+  const slideNow = async () => (await slideState()).n;
+  const seen = [];
+  for (const code of ['ArrowLeft', 'ArrowRight', 'PageDown', 'Space', 'PageUp', 'ArrowLeft', 'End', 'ArrowRight', 'Space', 'PageDown', 'PageUp', 'Home', 'KeyC', 'Digit5']) {
+    await press(code);
+    seen.push(await slideNow());
+  }
+  const want = '1,2,3,4,3,2,11,11,11,11,10,1,1,1';
+  expect(seen.join(',') === want, `→/PageDown/Space/←/PageUp/Home/End 이동: ${seen.join(',')} (기대 ${want})`);
+
+  // 길게 눌러 생기는 반복 입력은 무시한다
+  for (const code of ['ArrowRight', 'PageDown', 'Space', 'End']) await press(code, { repeat: true });
+  expect((await slideNow()) === 1, `반복 입력 무시: 1장 유지 (${await slideNow()})`);
+  await press('End');
+  for (const code of ['ArrowLeft', 'PageUp', 'Home']) await press(code, { repeat: true });
+  expect((await slideNow()) === SLIDE_COUNT, `반복 입력 무시: 마지막 장 유지 (${await slideNow()})`);
+
+  // 맡은 키(반복 포함)는 기본 동작(스크롤 등)을 막고, 맡지 않은 키(C, 5)는 건드리지 않는다
+  const slideKeys = await run('__slides.keys');
+  const mine = ['ArrowRight', 'ArrowLeft', 'PageDown', 'PageUp', 'Space', 'Home', 'End'];
+  const notPreventedSlide = slideKeys.filter((k) => mine.includes(k.code) && !k.prevented);
+  const preventedOther = slideKeys.filter((k) => !mine.includes(k.code) && k.prevented);
+  expect(notPreventedSlide.length === 0 && preventedOther.length === 0,
+    `슬라이드 기본 동작 막기: 맡은 키 ${slideKeys.filter((k) => mine.includes(k.code)).length}개(반복 ${slideKeys.filter((k) => k.repeat).length}개 포함) 모두 막음, C·5는 그대로 ${JSON.stringify([...notPreventedSlide, ...preventedOther])}`);
+
+  // Ctrl·Alt·Meta 조합은 무시하고 기본 동작도 막지 않는다(페이지 안 합성 이벤트. 실제 입력은 브라우저 단축키가 실행된다)
+  await press('Home');
+  await press('ArrowRight'); // 2장에서 시작해 앞뒤 어느 쪽으로도 움직이지 않는지 본다
+  const slideMods = await run(`(() => [
+    ['ArrowRight', 'ArrowRight', { ctrlKey: true }], ['ArrowRight', 'ArrowRight', { altKey: true }], ['ArrowLeft', 'ArrowLeft', { altKey: true }],
+    ['ArrowLeft', 'ArrowLeft', { metaKey: true }], ['PageDown', 'PageDown', { ctrlKey: true }], ['PageUp', 'PageUp', { ctrlKey: true }],
+    ['Space', ' ', { ctrlKey: true }], ['Space', ' ', { altKey: true }], ['Home', 'Home', { ctrlKey: true }], ['End', 'End', { ctrlKey: true }],
+    ['End', 'End', { metaKey: true }], ['ArrowRight', 'ArrowRight', { ctrlKey: true, shiftKey: true }],
+  ].map(([code, key, mods]) => {
+    const event = new KeyboardEvent('keydown', { code, key, bubbles: true, cancelable: true, ...mods });
+    document.dispatchEvent(event);
+    return { combo: Object.keys(mods).join('+') + '+' + code, prevented: event.defaultPrevented };
+  }))()`);
+  const afterSlideMods = await slideNow();
+  expect(afterSlideMods === 2, `슬라이드 수정 키 무시: ${slideMods.length}개 조합 뒤에도 2장 (${afterSlideMods}장)`);
+  const wronglyPreventedSlide = slideMods.filter((k) => k.prevented);
+  expect(wronglyPreventedSlide.length === 0, `슬라이드 수정 키 조합은 기본 동작을 막지 않음 ${wronglyPreventedSlide.length ? JSON.stringify(wronglyPreventedSlide) : ''}`);
+
+  const slideVis = await run('document.visibilityState');
+  const slidePages = (await (await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/list`)).json()).filter((t) => t.type === 'page');
+  expect(slideVis === 'visible' && slidePages.length === 1, `슬라이드 키 확인 뒤에도 탭 하나만 열려 있고 보임 (${slideVis}, 탭 ${slidePages.length}개)`);
+
+  // 전환과 동작 줄이기
+  const slideMotion = async () => {
+    await run(`(() => {
+      __slides.anims = [];
+      for (const s of document.querySelectorAll('.slide')) s.addEventListener('animationstart', (e) => {
+        if (e.target === s) __slides.anims.push(parseFloat(getComputedStyle(s).animationDuration) * 1000);
+      });
+    })()`);
+    await press('ArrowRight'); // 1 → 2
+    await press('ArrowRight'); // 2 → 3
+    await press('ArrowRight'); // 3 → 4(오리 dejected)
+    await sleep(300);
+    return run(`(() => {
+      const sheets = [...document.querySelectorAll('.duck-sheet img')];
+      const sheet = getComputedStyle(sheets[0]);
+      return {
+        anims: __slides.anims,
+        sheetAnims: [...new Set(sheets.map(img => getComputedStyle(img).animationName))],
+        sheetFrameMs: parseFloat(sheet.animationDuration) * 1000 / 6,
+        reduce: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      };
+    })()`);
+  };
+  await load(1280, 720, 'slides.html', SLIDE_HELPERS);
+  const slideNormal = await slideMotion();
+  expect(slideNormal.anims.length === 3 && slideNormal.anims.every((ms) => ms > 0 && ms <= 200), `슬라이드 전환 페이드: ${slideNormal.anims.join(',')}ms (200ms 이하)`);
+  expect(slideNormal.sheetAnims.join() === 'duck-sheet' && slideNormal.sheetFrameMs === 250, `슬라이드 오리 동작 재생, 칸당 ${slideNormal.sheetFrameMs}ms`);
+  await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await load(1280, 720, 'slides.html', SLIDE_HELPERS);
+  const slideReduced = await slideMotion();
+  expect(slideReduced.reduce && slideReduced.anims.length === 0, `동작 줄이기: 슬라이드 전환 없음 (${slideReduced.anims.length}개)`);
+  expect(slideReduced.sheetAnims.join() === 'none', `동작 줄이기: 슬라이드 오리 동작 멈춤 (${slideReduced.sheetAnims.join(',')})`);
+  await send('Emulation.setEmulatedMedia', { features: [] });
+
+  // 8) 네트워크
   console.log('네트워크');
   const unique = [...new Set(requests)];
   const external = unique.filter((url) => !url.startsWith(BASE) && !url.startsWith('data:') && !url.startsWith('about:'));
   expect(external.length === 0, `외부 요청 0건 ${external.length ? JSON.stringify(external) : ''}`);
-  for (const path of ['scripts/main.js', 'scripts/phone-view.js', 'scripts/guide.js', 'scripts/steps.js', 'scripts/recording.js']) {
+  for (const path of ['scripts/main.js', 'scripts/phone-view.js', 'scripts/guide.js', 'scripts/steps.js', 'scripts/recording.js', 'scripts/slides.js']) {
     const mime = responses.get(BASE + path);
     expect(mime === 'text/javascript', `${path} MIME = ${mime}`);
   }

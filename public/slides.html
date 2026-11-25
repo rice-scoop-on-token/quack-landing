@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quack 발표 슬라이드</title>
+  <!-- 파비콘 요청(/favicon.ico)도 생기지 않도록 빈 아이콘을 넣는다 -->
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/slides.css">
+  <script type="module" src="scripts/slides.js"></script>
+</head>
+<body>
+  <!-- 녹화용 발표 슬라이드. 16:9 캔버스 하나에 슬라이드 11장을 겹쳐 두고 한 장만 보인다.
+       녹화에 잡히면 안 되므로 슬라이드 번호·키 안내·커서는 두지 않는다. 키는 scripts/slides.js -->
+  <main class="deck">
+
+    <!-- 1. 표지: 포스터 헤더 구성(노란 띠, 제목, 학교·지도교수, 오리 3마리, 팀원) -->
+    <section class="slide slide-cover" aria-label="표지">
+      <header class="cover-band">
+        <div class="cover-title-row">
+          <p class="cover-quack">꽥</p>
+          <h1 class="cover-title">Quack: 나만의 튜티가 되어주는 AI 서비스</h1>
+        </div>
+        <div class="cover-bottom">
+          <p class="cover-school">충남대학교 컴퓨터융합학부 · 지도교수 <b>김도헌</b> 교수</p>
+          <div class="cover-ducks">
+            <img class="cover-duck cover-duck-baby" src="assets/animal/duck/baby/base.png" alt="" width="512" height="512">
+            <img class="cover-duck cover-duck-child" src="assets/animal/duck/child/base.png" alt="" width="512" height="512">
+            <img class="cover-duck cover-duck-adult" src="assets/animal/duck/adult/base.png" alt="" width="512" height="512">
+          </div>
+          <ul class="cover-members">
+            <li><span class="member-id">202500220</span> <b>안용태</b></li>
+            <li><span class="member-id">202500923</span> <b>박정현</b></li>
+            <li><span class="member-id">202302612</span> <b>정성헌</b></li>
+            <li><span class="member-id">202502610</span> <b>박혜린</b></li>
+          </ul>
+        </div>
+      </header>
+      <p class="team-tag cover-team">토큰에 쌀밥 한 스쿱</p>
+    </section>
+
+    <!-- 2. 질문 -->
+    <section class="slide slide-center" aria-label="질문">
+      <h2 class="big-message">혹시 AI 많이 사용하시나요?</h2>
+    </section>
+
+    <!-- 3. 시험 기간 공부법 -->
+    <section class="slide" aria-label="시험 기간 공부법">
+      <h2 class="pill"><span class="pill-num">01</span>시험 기간 공부법</h2>
+      <div class="slide-body">
+        <ol class="flow">
+          <li class="flow-card">강의 자료</li>
+          <li class="flow-arrow" aria-hidden="true"></li>
+          <li class="flow-card">AI에 넣기</li>
+          <li class="flow-arrow" aria-hidden="true"></li>
+          <li class="flow-card">예상 문제 받기</li>
+          <li class="flow-arrow" aria-hidden="true"></li>
+          <li class="flow-card flow-card-done">다 맞힘 ✓</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 4. 핵심 문제 -->
+    <section class="slide slide-center" aria-label="핵심 문제">
+      <div class="duck-sheet duck-sheet-problem">
+        <img src="assets/animal/duck/baby/actions/dejected.png" alt="" width="1536" height="256">
+      </div>
+      <h2 class="big-message big-message-xl">다 알았다는 <em>착각</em></h2>
+      <p class="sub-message">쉬운 퀴즈는 다 맞혔는데, 친구에게 설명하려면 말이 막혀요</p>
+    </section>
+
+    <!-- 5. 두 가지 힌트 -->
+    <section class="slide" aria-label="두 가지 힌트">
+      <h2 class="pill"><span class="pill-num">02</span>두 가지 힌트</h2>
+      <div class="slide-body">
+        <div class="hints">
+          <article class="card hint">
+            <h3 class="hint-title">파인만 학습법</h3>
+            <p class="hint-desc">남에게 설명하며 모르는 부분 찾기</p>
+          </article>
+          <article class="card hint">
+            <h3 class="hint-title">러버덕 디버깅</h3>
+            <p class="hint-desc">오리에게 코드를 설명하다 스스로 버그 찾기</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. AI의 역할 뒤집기 -->
+    <section class="slide" aria-label="AI의 역할 뒤집기">
+      <h2 class="pill"><span class="pill-num">03</span>AI의 역할 뒤집기</h2>
+      <div class="slide-body flip">
+        <p class="card flip-before"><s>AI = 정답을 알려 주는 선생님</s></p>
+        <span class="flip-arrow" aria-hidden="true"></span>
+        <p class="card flip-after">AI = 내 설명을 듣고 되묻는 학생, 튜티</p>
+        <p class="flip-note">이름 '꽥'은 러버덕에서 왔어요</p>
+      </div>
+    </section>
+
+    <!-- 7. 동물 3종. 이름은 앱 manifest.json, 라벨·태그는 앱 personas.ts 값 그대로 -->
+    <section class="slide slide-center" aria-label="동물 3종">
+      <div class="animals">
+        <article class="card animal">
+          <img class="animal-img" src="assets/animal/duck/baby/base.png" alt="" width="512" height="512">
+          <h3 class="animal-name">러버덕</h3>
+          <p class="animal-label">다정한 응원형</p>
+          <ul class="animal-tags"><li>차근차근</li><li>안심시키기</li><li>작은 성취</li></ul>
+        </article>
+        <article class="card animal">
+          <img class="animal-img" src="assets/animal/cat/baby/base.png" alt="" width="512" height="512">
+          <h3 class="animal-name">고양이</h3>
+          <p class="animal-label">명쾌한 질문형</p>
+          <ul class="animal-tags"><li>핵심 콕</li><li>논리 확인</li><li>짧고 선명하게</li></ul>
+        </article>
+        <article class="card animal">
+          <img class="animal-img" src="assets/animal/raccoon/baby/base.png" alt="" width="512" height="512">
+          <h3 class="animal-name">라쿤</h3>
+          <p class="animal-label">호기심 탐구형</p>
+          <ul class="animal-tags"><li>예시 탐험</li><li>비교하기</li><li>함께 발견</li></ul>
+        </article>
+      </div>
+      <p class="sub-message sub-message-strong">대화하기 편한 동물을 골라 학습을 시작해요</p>
+    </section>
+
+    <!-- 8. 일반 AI와 비교 -->
+    <section class="slide" aria-label="그냥 AI한테 물어보면 안 되나요?">
+      <h2 class="pill"><span class="pill-num">04</span>그냥 AI한테 물어보면 안 되나요?</h2>
+      <div class="slide-body">
+        <!-- 두 열의 같은 줄끼리 높이를 맞춘다(subgrid) -->
+        <div class="compare">
+          <div class="card compare-col compare-col-ai">
+            <h3 class="compare-head">일반 AI</h3>
+            <p class="compare-cell">매번 요청을 새로 써야 해요</p>
+            <p class="compare-cell">공부 기록이 그날로 끝나요</p>
+            <p class="compare-cell">읽기만 해서 다 된 것 같은 착각</p>
+          </div>
+          <div class="card compare-col compare-col-quack">
+            <h3 class="compare-head">꽥</h3>
+            <p class="compare-cell">학습 목표 기준으로 설명의 빈틈만 되물어요</p>
+            <p class="compare-cell">못 답한 질문은 다음 점검과 공부 목표로 이어져요</p>
+            <p class="compare-cell">설명하면서 진짜 이해를 확인해요</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. 시연 전환. 이 슬라이드 다음에 OBS를 시연 장면(index.html)으로 바꾼다 -->
+    <section class="slide slide-center" aria-label="시연 전환">
+      <div class="duck-sheet duck-sheet-demo">
+        <img src="assets/animal/duck/baby/actions/happy_jump.png" alt="" width="1536" height="256">
+      </div>
+      <h2 class="big-message">실제 앱으로 보여 드릴게요</h2>
+    </section>
+
+    <!-- 10. 기대효과: 포스터 03과 같은 4단 구성 -->
+    <section class="slide" aria-label="기대효과">
+      <h2 class="pill"><span class="pill-num">05</span>기대효과</h2>
+      <div class="slide-body">
+        <ol class="effects">
+          <li class="card effect">
+            <span class="effect-num">01</span>
+            <h3 class="effect-title">메타인지 향상</h3>
+            <p class="effect-desc">AI에게 직접 설명하며 '안다고 착각하는 지식' 점검</p>
+          </li>
+          <li class="effect-chevron" aria-hidden="true"></li>
+          <li class="card effect">
+            <span class="effect-num">02</span>
+            <h3 class="effect-title">지식의 내재화</h3>
+            <p class="effect-desc">꼬리질문에 답하며 단순 암기를 넘어 진짜 이해로</p>
+          </li>
+          <li class="effect-chevron" aria-hidden="true"></li>
+          <li class="card effect">
+            <span class="effect-num">03</span>
+            <h3 class="effect-title">학습 몰입도 강화</h3>
+            <p class="effect-desc">학습할수록 캐릭터가 자라는 보상으로 동기 부여</p>
+          </li>
+          <li class="effect-chevron" aria-hidden="true"></li>
+          <li class="card effect">
+            <span class="effect-num">04</span>
+            <h3 class="effect-title">소속감 및 성취감</h3>
+            <p class="effect-desc">친구와 함께 공부하며 꾸준히 이어 가기</p>
+            <!-- 친구 화면만 있고 서버는 아직 없다 -->
+            <span class="effect-planned">구현 예정</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 11. 마무리 -->
+    <section class="slide slide-center" aria-label="마무리">
+      <p class="closing-quack">꽥</p>
+      <h2 class="big-message">들어주셔서 감사합니다!</h2>
+      <p class="team-tag">토큰에 쌀밥 한 스쿱</p>
+    </section>
+
+  </main>
+</body>
+</html>

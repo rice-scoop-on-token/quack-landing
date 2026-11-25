@@ -15,7 +15,8 @@ Quack(꽥) 앱을 충남대 창의축전 부스(11/20 금)에서 시연하기 �
 2. 브라우저 화면 공유(getDisplayMedia)로 scrcpy 창을 잡아 폰 프레임 안에 실시간 표시 — 완료
 3. 안내 패널 단계 데이터와 방향키 전환, AI 답변 대기(8~15초) 중 설명 문구 — 완료
 4. 대비책: 사전 녹화 영상 재생(미러링 실패와 인터넷 실패를 모두 막는다), 서버 Range 지원 — 완료
-5. (후보) 대비책: 미러링 실패 시 quack 웹 빌드(실제 AI 모드) 전환
+5. 최종 제출 발표 영상(OBS 녹화)용 슬라이드 11장 `slides.html`(포스터 `docs/poster.png` 구성 + quack 토큰·paper 문법) — 완료
+6. (후보) 대비책: 미러링 실패 시 quack 웹 빌드(실제 AI 모드) 전환
 
 안내 패널 단계: 1) 내 말로 설명하기 2) AI가 살펴보는 중 3) 꼬리질문 4) 다시 설명하기 5) 이해 확인 6) 성장 보상 (문구는 `public/scripts/steps.js`)
 
@@ -30,9 +31,14 @@ Quack(꽥) 앱을 충남대 창의축전 부스(11/20 금)에서 시연하기 �
 - `public/scripts/main.js`: 발표자 키를 한곳에서 연결한다(`←`/`→`, `1`~`6`, `Home`, `H`, `C`, `R`, `P`, `,`, `.`, `L`). `event.code` 기준이라 한글 입력 상태에서도 동작한다. Ctrl·Alt·Meta 조합은 모두 무시하고(브라우저 단축키에 맡김), 맡은 키는 `preventDefault()`하며, 길게 눌러 생기는 반복 입력은 무시한다. `C`는 getDisplayMedia → `attachStream`이고, 새 창을 고른 뒤에만 기존 스트림을 정리한다(취소하면 기존 화면·모드 유지).
 - `public/scripts/steps.js`: 안내 패널 단계 데이터(제목, 설명, 오리 동작, 경과 시간 표시 여부). 오리 동작은 quack `screenActions.ts` 매핑을 따른다.
 - `public/scripts/guide.js`: 패널 그리기. `showStep(n)`/`nextStep()`/`prevStep()`, 진행 6칸, 200ms 전환, 2단계 경과 시간(남은 시간·진행률은 보여 주지 않는다). 패널 높이는 설명 2줄 + 경과 시간 줄 자리를 늘 잡아 단계를 넘겨도 바뀌지 않는다.
+- 발표 슬라이드(최종 제출 영상용, OBS 장면 순서: 슬라이드 1~9 → 시연 화면 → 슬라이드 10~11). 시연 화면 코드와 파일을 나누고 서로 고치지 않는다.
+  - `public/slides.html`: 11장 마크업과 문구(사용자 확정본). 7장 동물 이름은 quack `manifest.json`(러버덕·고양이·라쿤), 라벨·태그는 `personas.ts` 그대로.
+  - `public/styles/slides.css`: 1280u×720u 16:9 캔버스(`--u` 같은 방식), 위아래 노란 띠, 번호 알약 제목(3·5·6·8·10장에 01~05), 번호 원·꺾쇠, `cursor: none`, 들어오는 장만 180ms 페이드. 노랑 위 글자는 갈색, 주황 글자는 `--color-text-accent`.
+  - `public/scripts/slides.js`: `showSlide(n)`, 키 `→`·`PageDown`·`Space` / `←`·`PageUp` / `Home` / `End`. main.js와 같은 규칙(event.code, 수정 키 무시, preventDefault, 반복 무시). 번호·키 안내는 화면에 두지 않는다.
+  - `docs/poster.png`는 부스 포스터 참고 이미지다. git에서 추적하지 않고 `public/`에 복사하지 않는다.
 - 오리 동작 시트(256px 칸 6개)는 CSS `steps(6)`로 칸당 250ms(앱 `CharacterBox`와 같음) 재생한다. "동작 줄이기"면 시트·단계 전환·대기 화면 오리 모두 멈춘다.
 - `public/assets/SOURCES.md`: 복사한 에셋과 글꼴의 출처·버전.
-- `scripts/check.mjs`(`npm run check`): 헤드리스 Chrome + DevTools 프로토콜 자동 확인. 서버가 꺼져 있으면 직접 띄운다. 테스트 영상(캔버스 `captureStream()`)은 이 스크립트가 페이지 안에서 `import('/scripts/phone-view.js')`로 넣고, 시연 화면 코드에는 테스트 경로를 두지 않는다. 결과는 OS 임시 폴더에만 쓴다. 주의: CDP 실제 키 입력(`Input.dispatchKeyEvent`)은 브라우저 단축키도 실행하므로(Ctrl+H 방문 기록, Ctrl+Shift+C 개발자 도구 → 시연 탭이 가려져 타이머가 늦어지고 외부 요청이 생김), 수정 키 조합은 페이지 안 합성 `KeyboardEvent`로 확인한다. 녹화 모드 확인은 페이지 안 MediaRecorder로 만든 테스트 mp4를 잠시 `public/recordings/demo.mp4`에 두고 끝나면 지운다. 표시 파일 `public/recordings/.check-test-video`가 있을 때만 지우므로, 실제 녹화(표시 없이 있는 demo.mp4)는 건드리지 않고 녹화 확인을 건너뛴다.
+- `scripts/check.mjs`(`npm run check`): 헤드리스 Chrome + DevTools 프로토콜 자동 확인. 서버가 꺼져 있으면 직접 띄운다. 테스트 영상(캔버스 `captureStream()`)은 이 스크립트가 페이지 안에서 `import('/scripts/phone-view.js')`로 넣고, 시연 화면 코드에는 테스트 경로를 두지 않는다. 결과는 OS 임시 폴더에만 쓴다. 주의: CDP 실제 키 입력(`Input.dispatchKeyEvent`)은 브라우저 단축키도 실행하므로(Ctrl+H 방문 기록, Ctrl+Shift+C 개발자 도구 → 시연 탭이 가려져 타이머가 늦어지고 외부 요청이 생김), 수정 키 조합은 페이지 안 합성 `KeyboardEvent`로 확인한다. 녹화 모드 확인은 페이지 안 MediaRecorder로 만든 테스트 mp4를 잠시 `public/recordings/demo.mp4`에 두고 끝나면 지운다. 표시 파일 `public/recordings/.check-test-video`가 있을 때만 지우므로, 실제 녹화(표시 없이 있는 demo.mp4)는 건드리지 않고 녹화 확인을 건너뛴다. 발표 슬라이드는 11장 × 3해상도 배치(스크린샷은 1280×720·1920×1080, `slides-*.png`), 키 조작, 실제로 그려진 글꼴(`CSS.getPlatformFontsForNode`로 시스템 글꼴 대체 없음), 커서·번호 없음, 전환·동작 줄이기, 7장 동물 값을 확인한다. 숨은 장은 `visibility: hidden`이라 `checkVisibility({ visibilityProperty: true })`로 센다.
 
 ## 디자인 기준
 
